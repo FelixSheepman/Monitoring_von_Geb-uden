@@ -1,0 +1,141 @@
+"""
+Orchestriert Datenpruefung, Kennwerte und die 12 Abbildungen aus Kapitel 6 der
+Hausarbeit zu einem einzigen Report-Objekt. Wird sowohl vom CLI-Skript als auch
+von der Streamlit-App genutzt, damit beide exakt dieselbe Auswertungslogik
+verwenden.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+import pandas as pd
+
+from . import figures as fx
+from .metrics import daily_consumption
+from .narrative import NarrativeBlock, build_narrative
+from .quality import quality_to_dataframe, run_data_quality
+
+
+@dataclass
+class FigureEntry:
+    key: str
+    title: str
+    figure: object  # plotly.graph_objects.Figure
+    caption: str
+
+
+@dataclass
+class Report:
+    df: pd.DataFrame
+    quality_df: pd.DataFrame
+    figures: list[FigureEntry] = field(default_factory=list)
+    narrative: list[NarrativeBlock] = field(default_factory=list)
+    carpet_year: int = 2025
+    carpet_month: int = 2
+
+
+def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 2,
+                  display_resample: str | None = None) -> Report:
+    """`df` ist immer die volle Rohauflösung und wird für Datenprüfung, Carpetplots
+    und Tagesverbrauchsberechnungen verwendet (Glätten würde dort Aussetzer/Resets
+    verdecken bzw. die Tagesdifferenz-Logik verfälschen). `display_resample`
+    (z.B. "h" oder "D") glättet ausschließlich die reinen Zeitverlaufs-Liniendiagramme
+    für eine ruhigere Darstellung."""
+    quality_results = run_data_quality(df)
+    quality_df = quality_to_dataframe(quality_results)
+
+    df_disp = df.resample(display_resample).mean() if display_resample else df
+
+    figs: list[FigureEntry] = []
+
+    figs.append(FigureEntry(
+        "wmz_kumuliert", "Zähler 019 – WMZ (kumuliert)",
+        fx.fig_meter_cumulative(df_disp, "Zähler 019 – WMZ", "Zähler 019 – WMZ (kumuliert)"),
+        "Kumulierter Zählerstand des Wärmemengenzählers über den gesamten Erfassungszeitraum.",
+    ))
+
+    figs.append(FigureEntry(
+        "regelguete_stat_heizung", "Regelgüte Stat. Heizung Geb.06: Soll- vs. Ist-Vorlauf",
+        fx.fig_soll_ist(df_disp, "Stat. Heizung Geb.06 VL (Soll)", "Stat. Heizung Geb.06 VL (Ist)",
+                         "Regelgüte Stat. Heizung Geb.06: Soll- vs. Ist-Vorlauf"),
+        "Vergleich der systemseitig berechneten Soll-Vorlauftemperatur mit der gemessenen Ist-Vorlauftemperatur.",
+    ))
+
+    figs.append(FigureEntry(
+        "heizkurve", "Heizkurve: Außentemp. vs. Vorlauftemp. Geb.06",
+        fx.fig_heating_curve(df, "RLT KL01 Außenluft", "Stat. Heizung Geb.06 VL (Ist)",
+                              "Heizkurve: Außentemp. vs. Vorlauftemp. Geb.06"),
+        "Streudiagramm der Ist-Vorlauftemperatur in Abhängigkeit von der Außentemperatur mit Regressionslinie.",
+    ))
+
+    figs.append(FigureEntry(
+        "carpet_rlt_vl", f"RLT primär VL-Temp. {carpet_month:02d}/{carpet_year}",
+        fx.fig_carpet(df, "RLT primär VL", carpet_year, carpet_month,
+                       f"RLT primär VL-Temp. {carpet_month:02d}/{carpet_year}", zmin=20, zmax=65),
+        "Carpetplot der primären Vorlauftemperatur der RLT-Anlage, Farbskala fix auf 20–65 °C.",
+    ))
+
+    figs.append(FigureEntry(
+        "carpet_rlt_rl", f"RLT primär RL-Temp. {carpet_month:02d}/{carpet_year}",
+        fx.fig_carpet(df, "RLT primär RL", carpet_year, carpet_month,
+                       f"RLT primär RL-Temp. {carpet_month:02d}/{carpet_year}", zmin=20, zmax=65),
+        "Carpetplot der primären Rücklauftemperatur der RLT-Anlage, Farbskala fix auf 20–65 °C.",
+    ))
+
+    figs.append(FigureEntry(
+        "regelguete_fbh", "Regelgüte FBH Geb.06: Soll- vs. Ist-Vorlauf",
+        fx.fig_soll_ist(df_disp, "FBH Geb.06 VL (Soll)", "FBH Geb.06 VL (Ist)",
+                         "Regelgüte FBH Geb.06: Soll- vs. Ist-Vorlauf"),
+        "Vergleich der Soll- mit der Ist-Vorlauftemperatur der Fußbodenheizung Gebäude 06.",
+    ))
+
+    figs.append(FigureEntry(
+        "zonenvergleich", "Hydraulischer Abgleich: Zonenvergleich Vorlauftemperaturen",
+        fx.fig_zone_comparison(df_disp, [
+            ("Stat. Heizung Geb.06", "Stat. Heizung Geb.06 VL (Ist)"),
+            ("FBH Geb.06", "FBH Geb.06 VL (Ist)"),
+            ("FBH Geb.08 KI-Räume", "FBH Geb.08 KI-Räume VL"),
+            ("FBH Geb.08 Intensivpflege", "FBH Geb.08 Intensivpflege VL"),
+        ], "Hydraulischer Abgleich: Zonenvergleich Vorlauftemperaturen"),
+        "Vergleich der Ist-Vorlauftemperaturen von vier Heizkreisen zur Prüfung des hydraulischen Abgleichs.",
+    ))
+
+    figs.append(FigureEntry(
+        "delta_t", "Effizienz: Temperaturspreizung (Delta T)",
+        fx.fig_delta_t(df_disp, [
+            ("Stat. Heizung Geb.06", "Stat. Heizung Geb.06 VL (Ist)", "Stat. Heizung Geb.06 RL"),
+            ("FBH Geb.06", "FBH Geb.06 VL (Ist)", "FBH Geb.06 RL"),
+        ], "Effizienz: Temperaturspreizung (Delta T)"),
+        "Temperaturdifferenz zwischen Vor- und Rücklauf als Effizienzindikator der Wärmeübergabe.",
+    ))
+
+    figs.append(FigureEntry(
+        "rlt_aul_zul", "RLT-Anlage: Außenluft vs. Zuluft",
+        fx.fig_two_series(df_disp, "RLT KL01 Außenluft", "Außenluft", "RLT KL01 Zuluft", "Zuluft",
+                           "RLT-Anlage: Außenluft vs. Zuluft"),
+        "Zeitlicher Verlauf von Außenluft- und Zulufttemperatur der RLT-Anlage.",
+    ))
+
+    daily_strom_ab = daily_consumption(df, "Zähler 021 – Strom Abluft")
+    daily_strom_zu = daily_consumption(df, "Zähler 022 – Strom Zuluft")
+    figs.append(FigureEntry(
+        "strom_rlt_taeglich", "Stromverbrauch RLT-Ventilatoren (Tageswerte)",
+        fx.fig_daily_lines({
+            "Abluftventilator": daily_strom_ab,
+            "Zuluftventilator": daily_strom_zu,
+        }, "Stromverbrauch RLT-Ventilatoren (Tageswerte)"),
+        "Täglicher elektrischer Energieverbrauch der Ab- und Zuluftventilatoren.",
+    ))
+
+    daily_waerme = daily_consumption(df, "Zähler 019 – WMZ")
+    figs.append(FigureEntry(
+        "waerme_taeglich", "Täglicher Wärmeverbrauch",
+        fx.fig_daily_bar(daily_waerme, "Täglicher Wärmeverbrauch"),
+        "Absoluter, täglich aufsummierter Wärmeverbrauch der gesamten Anlage.",
+    ))
+
+    narrative = build_narrative(df)
+
+    return Report(df=df, quality_df=quality_df, figures=figs, narrative=narrative,
+                  carpet_year=carpet_year, carpet_month=carpet_month)

@@ -1,0 +1,409 @@
+
+	39674804051300063373049276000
+	Master-Studiengang „Bauingenieurwesen“
+	„Energieeffiziente Nichtwohngebäude“
+	
+	Felix Schafmann / Matrikel
+	Julian Greitens / Matrikel
+	Raffael Houssein / Matrikel
+	Frederic Dahlhaus / 1240841
+	
+	
+	Thema der Hausarbeit
+	„Verwendung von KI-Agenten im Monitoring“ 
+	
+	Stand: 28.07.2026
+	
+	
+	Dr.-Ing. Heiko Winkler
+	Labor Bauphysik - Laboratory of Building Physics
+
+
+Inhaltsverzeichnis
+ TOC \o "1-3" \h \z \u 1	Zweck und Ziel	 PAGEREF _Toc238199775 \h 5
+2	Vorgehensweise	 PAGEREF _Toc238199776 \h 6
+3	Forschungsaufgaben	 PAGEREF _Toc238199777 \h 7
+4	Theoretische Grundlagen	 PAGEREF _Toc238199778 \h 8
+		4.1	Monitoring bei Nichtwohngebäuden	 PAGEREF _Toc238199779 \h 8
+	Vorgehensweise, Sensorikarten, Lage der Sensoren bei Heizungen, Lüftungen und Kälte (Einbauorte), Qualitätskriterien bei Messdaten	 PAGEREF _Toc238199780 \h 8
+		4.2	Arten der grafischen Aufbereitung	 PAGEREF _Toc238199781 \h 8
+		4.3	Grundlagen der KI	 PAGEREF _Toc238199782 \h 9
+		4.4	KI-Agenten	 PAGEREF _Toc238199783 \h 9
+		4.5	….	 PAGEREF _Toc238199784 \h 9
+5	Vorbereitung der Bearbeitung	 PAGEREF _Toc238199785 \h 9
+		5.1	Vorgehensweise zur Bearbeitung der Aufgabenstellung	 PAGEREF _Toc238199786 \h 9
+		5.2	Konfiguration diverser Grafiken	 PAGEREF _Toc238199787 \h 9
+		5.3	Definition von Zwischenschritten mit Kontrollkriterien	 PAGEREF _Toc238199788 \h 10
+		5.4	Überblick und Vorauswahl von geeigneten KI-Agenten	 PAGEREF _Toc238199789 \h 10
+		5.5	Zusammenfassung	 PAGEREF _Toc238199790 \h 10
+6	Konventionelle Erarbeitung eines Monitoringberichtes	 PAGEREF _Toc238199791 \h 11
+		6.1	Einleitung	 PAGEREF _Toc238199792 \h 11
+		6.2	Datenprüfung	 PAGEREF _Toc238199793 \h 11
+		6.3	Grafische Aufbereitung in diversen Grafikformaten	 PAGEREF _Toc238199794 \h 16
+		6.4	Auswertung der Ergebnisse	 PAGEREF _Toc238199795 \h 23
+		6.5	Bewertung der Ergebnisse	 PAGEREF _Toc238199796 \h 23
+		6.6	Zusammenfassung	 PAGEREF _Toc238199797 \h 23
+		6.7	Zwischenschritt 6: Bericht	 PAGEREF _Toc238199798 \h 23
+7	Nachweisführung mittels KI-Agenten	 PAGEREF _Toc238199799 \h 24
+		7.1	Einleitung	 PAGEREF _Toc238199800 \h 24
+		7.2	Zwischenschritt 1: …	 PAGEREF _Toc238199801 \h 24
+		7.3	Zwischenschritt 2: …	 PAGEREF _Toc238199802 \h 24
+		7.4	Zwischenschritt 3: ….	 PAGEREF _Toc238199803 \h 24
+		7.5	Zwischenschritt 3: ….	 PAGEREF _Toc238199804 \h 24
+		7.6	Zwischenschritt 3: ….	 PAGEREF _Toc238199805 \h 24
+		7.7	Zwischenschritt 4: Bericht	 PAGEREF _Toc238199806 \h 24
+8	Vergleich der konventionellen Bearbeitung mit der durch KI-Agenten	 PAGEREF _Toc238199807 \h 25
+		8.1	Einleitung	 PAGEREF _Toc238199808 \h 25
+		8.2	Zwischenschritt 1:	 PAGEREF _Toc238199809 \h 25
+		8.2.1	Gegenüberstellung der Ergebnisse für die Kontrollkriterien	 PAGEREF _Toc238199810 \h 25
+		8.2.2	Vergleich der Ergebnisse	 PAGEREF _Toc238199811 \h 25
+		8.2.3	Optimierung	 PAGEREF _Toc238199812 \h 25
+		8.2.4	Diskussion	 PAGEREF _Toc238199813 \h 25
+		8.2.5	Zusammenfassung der Ergebnisse	 PAGEREF _Toc238199814 \h 25
+		8.3	Zwischenschritt 2:	 PAGEREF _Toc238199815 \h 25
+		8.3.1	Gegenüberstellung der Ergebnisse für die Kontrollkriterien	 PAGEREF _Toc238199816 \h 25
+		8.3.2	Vergleich der Ergebnisse	 PAGEREF _Toc238199817 \h 25
+		8.3.3	Optimierung	 PAGEREF _Toc238199818 \h 25
+		8.3.4	Diskussion	 PAGEREF _Toc238199819 \h 25
+		8.3.5	Zusammenfassung der Ergebnisse	 PAGEREF _Toc238199820 \h 25
+		8.4	Zwischenschritt 3: ….	 PAGEREF _Toc238199821 \h 25
+		8.5	Zwischenschritt 4: Bericht	 PAGEREF _Toc238199822 \h 25
+		8.5.1	Gegenüberstellung der Ergebnisse für die Kontrollkriterien	 PAGEREF _Toc238199823 \h 25
+		8.5.2	Vergleich der Ergebnisse	 PAGEREF _Toc238199824 \h 25
+		8.5.3	Optimierung	 PAGEREF _Toc238199825 \h 25
+		8.5.4	Diskussion	 PAGEREF _Toc238199826 \h 25
+		8.5.5	Zusammenfassung der Ergebnisse	 PAGEREF _Toc238199827 \h 25
+		8.6	Zusammenfassung über alle Schritte und Kontrollkriterien	 PAGEREF _Toc238199828 \h 26
+9	Beantwortung der Forschungsfragen	 PAGEREF _Toc238199829 \h 26
+10	Zusammenfassung, Empfehlungen und Ausblick	 PAGEREF _Toc238199830 \h 26
+
+	 TOC \h \z \c "Abbildung" Abbildung 1: Messdatenkopf	 PAGEREF _Toc239160327 \h 12
+	Abbildung 2: Grafische Ableitung Zähler 019 – WMZ	 PAGEREF _Toc239160328 \h 16
+	Abbildung 3: Grafische Ableitung Regelgüte statische Heizung: Soll- und Ist-Vorlauf	 PAGEREF _Toc239160329 \h 16
+	Abbildung 4: Grafische Ableitung Heizkurve: Außentemp. vs. Vorlauftemp. Geb. 06	 PAGEREF _Toc239160330 \h 17
+	Abbildung 5: Grafische Ableitung RLT primär/VL-Temp. Februar 2025	 PAGEREF _Toc239160331 \h 18
+	Abbildung 6: Grafische Ableitung RLT primär/RL-Temp. Februar 2025	 PAGEREF _Toc239160332 \h 19
+	Abbildung 7: Grafische Ableitung Regelgüte Fußbodenheizung: Soll- und Ist-Vorlauf	 PAGEREF _Toc239160333 \h 20
+	Abbildung 8: Grafische Ableitung Hydraulicher Abgleich: Zonenvergleich VL-Temp.	 PAGEREF _Toc239160334 \h 20
+	Abbildung 9: Grafische Ableitung Effizienz: Temperaturspreizung (Delta T)	 PAGEREF _Toc239160335 \h 21
+	Abbildung 10: Grafische Ableitung RLT-Anlage: Außenluft vs. Zuluft	 PAGEREF _Toc239160336 \h 22
+	Abbildung 11: Grafische Ableitung Stromverbrauch RLT-Ventilatoren (Tageswerte)	 PAGEREF _Toc239160337 \h 22
+	Abbildung 12: Grafische Ableitung Täglicher Wärmeverbrauch	 PAGEREF _Toc239160338 \h 23
+
+
+Zweck und Ziel
+In den Planungsbüros arbeiten heute in den einzelnen Fachgebieten hochspezialisierte Fachkräfte. In Monitoring-Projekten gibt es dabei immer wiederkehrende, zeitaufwändige und teils monotone Arbeiten wie Datenkontrolle, Grafikerstellung, Grafikauswertung und die Erarbeitung von vollständigen, aussagekräftigen Berichten.
+Der Einsatz der oben erwähnten Spezialisten für immer wiederkehrende, monotone Arbeiten ist in der heutigen Zeit kaum noch zu rechtfertigen. Idealerweise sollten die Fachkräfte von diesen Arbeiten befreit werden, um mehr Zeit für Qualitätskontrollen, Optimierungen und der Kommunikation von Ergebnissen zu erhalten. 
+Der Zweck dieser Untersuchungen ist es, anhand von Datenauswertungen auf konventioneller Art eine Vergleichsgrundlage zu schaffen und anschließend geeignete KI-Agenten die gleichen Aufgaben mit den Zielen bearbeiten zu lassen, den aktuellen Stand der Gebrauchstauglichkeit von KI-Agenten bei der Datenverarbeitung und Datenauswertung zu ermitteln. 
+Bei der Bearbeitung der Aufgabenstellung sollen konventionelle Softwarelösungen (Word, Excel, Python) sowohl bei der herkömmlichen Bearbeitungsweise als auch bei der Bearbeitung der Aufgabenstellung mittels KI verwendet werden.  
+
+Vorgehensweise
+Zur Erarbeitung der Zielstellung wird folgende Vorgehensweise verfolgt:
+Recherche und Einarbeitung
+Aufgabenstellung
+Vorlesungsunterlagen zum Monitoring
+Geeignete grafische Darstellungsformen 
+Grafikerstellung mit Excel und Python
+Grundlagen der KI
+Überblick zu KI-Agenten
+Erläuterung der theoretischen Grundlagen zu den Funktionsweisen haustechnischen Anlagen (Lüftung, Heizung, Kühlung, Lage und Arten von Messsensoren in den Anlagen)
+Überblick über KI und KI-Agenten und deren recherchierbarer Einsatzschwerpunkt und Entwicklungsstand
+Einteilung sinnvoller Zwischenschritte bei der Aufbereitung und Auswertung von Messdaten (Datenprüfung, Grafikerstellungen, Auswertung, Bewertung, Berichtserstellung)
+Aufstellung von Kriterien zur Kontrolle von Zwischenergebnissen
+Erarbeitung eines Monitoringberichtes auf konventioneller Weise auf Basis der übergebenen Messdaten
+Identifizierung von Zwischenergebnissen aus Vergleichsgrundlage für die Ergebnisse von KI-Agenten. 
+Auswahl geeigneter KI-Agenten aus dem oben genannten Überblick
+Anwendung der KI-Agenten für jeden der oben genannten Zwischenschritte
+Vergleich der Zwischenergebnisse (Kontrollkriterien) aus konventionellem Monitoring und KI-Agenten gestützte Auswertung und Berichterstellung
+Diskussion der Ergebnisse für jeden Zwischenschritt und Aufzeigen von Optimierungsmöglichkeiten
+Bericht mit allen Ergebnissen, Grafiken, Bewertungen, Optimierungen, Empfehlungen und Ausblick
+Forschungsaufgaben
+Durch….
+Theoretische Grundlagen
+2 Heizperioden und eine Sommerperiode
+Überprüfung theoretischer Aussagen auch in der Praxis
+Optimierungspotenzial von Energieeinsparungen von 10%
+Ausführliche Beschreibung aller Grundlagen mit Grafiken
+Monitoring bei Nichtwohngebäuden
+Vorgehensweise, Sensorikarten, Lage der Sensoren bei Heizungen, Lüftungen und Kälte (Einbauorte), Qualitätskriterien bei Messdaten
+Arten der grafischen Aufbereitung
+Um die Messdaten konkret bewerten und auswerten kann, müssen diese in passenden Darstellungsformen wieder gegeben werden. Aufgrund dessen, dass verschiedene Werte, Einheiten, etc. vorhanden sind, sollten auch verschiedene Darstellungsformen gewählt werden. So können Muster, Fehlfunktionen oder Einsparpotenziale besser erkannt und dargestellt werden. Zur Aufbereitung der Daten auf dem konventionellen Weg wurde Microsoft Excel verwendet.
+Dabei werden folgende Formate relevant:
+Liniendiagramm: 
+Die Liniendiagramme bilden das Fundament in der Auswertung. Diese sind leicht verständlich und aussagekräftig. Durch das kontrollierte und durchdachte eintragen von Messwerten über eine chronologische Zeitachse lassen sich Regelgüten (Soll-Ist-Wert), Tag-Nacht-Zyklen sowie bei Heizungs- und RLT-Anlagen das Absenkverhalten detailliert bewerten.
+Streudiagramme:
+Mit dieser Darstellungsform können Abhängigkeiten zweier unterschiedlichen Variablen dargestellt werden. Bezogen auf das Monitoring dienen sie der Visualisierung von zwei abhängigen Größen voneinander. Dort können Trendlinien vorgesehen werden. Diese dienen einer besseren Übersicht.
+Säulen- und Flächendiagramme:
+Diese Variante von Diagrammen eigenen sich vor allem zur Darstellung von kumulierten Messdaten und Energiebilanzen. Mit Ihnen ist ein schneller Abgleich von Tagen oder Wochen, Jahren möglich.
+Carpetplots:
+Ein Carpetplot ist eine Matrixdarstellung. Diese ermöglicht es dreidimensionale Daten in einer zweidimensionalen Form darzustellen. Messwert können dort mit Farbwerten gekennzeichnet werden, so kann sich schnell ein überblick der Ergebnisse verschafft werden. Dabei sind niedrige Messwert oft blau und höhere Werte werden erst gelb und die höchsten Werte meistens rot.
+Grundlagen der KI
+KI-Agenten
+….
+Vorbereitung der Bearbeitung
+Vorgehensweise zur Bearbeitung der Aufgabenstellung
+Konfiguration diverser Grafiken
+Um die Auswertungsdiagramme in Excel zielgerichtet konfigurieren zu können, müssen die technischen Zusammenhänge klar herausgestellt werden.
+Für einen Soll-Ist-Vergleich von Vorlauftemperaturen oder den Zonenvergleich bei einem hydraulischen Abgleich wird das aggregierte Datum auf der x-Achse definiert. Damit die Übersichtlichkeit vorhanden bleibt, werden sekundäre y-Achsen vermieden, falls es sich um die gleichen Einheiten handelt (z.B. °C). Werden Laufzeiten betrachtet, wie zum Beispiel der Pumpenstatus (0 oder 1), wird die y-Achse fixiert. So können Ein- und Ausschaltvorgänge klar dargestellt werden.
+Zur Konfiguration von Heizkurven, werden ausschließlich die Datenpunkte von Außentemperatur (x-Achse) und Ist-Vorlauftemperatur (y-Achse) markiert. Diese werden als unverbundene Punktwolke im Streudiagramm dargestellt. Ebenso ist es möglich eine sogenannte Regressionsebene über die vorhandenen Messpunkte zu legen. Dazu muss nur eine Trendlinie im Diagramm hinzugefügt werden. So können unzulässige Dauerläufe im Sommerbetrieb (Werte bei >15°C Außentemperatur) isoliert werden und die tatsächliche Steilheit der Heizkurve abgelesen werden.
+Die Darstellung eines Carpetplots erfolgt über eine Pivot-Tabelle.  Das Datum wird den Spalten, die Uhrzeit den Zeilen und der zu untersuchende Parameter (z. B. RLT primär VL-Temp.) dem Wertebereich als "Mittelwert" zugewiesen. Durch eine „Bedingte Formatierung“ wird im Anschluss die grafische Darstellung hergestellt. Um einen konsistenten visuellen Kontrast über alle Wochentage hinweg zu erzeugen, wird eine Farben-Skala angewendet, deren Minimum- und Maximum-Werte manuell auf die realistischen Betriebsgrenzen der jeweiligen Anlage (z. B. 20 °C bis 65 °C) fixiert werden.
+Definition von Zwischenschritten mit Kontrollkriterien
+Überblick und Vorauswahl von geeigneten KI-Agenten
+Zusammenfassung
+Konventionelle Erarbeitung eines Monitoringberichtes
+Einleitung
+Das technische Monitoring und die darauf aufbaubare energetische Optimierung stellen im Lebenszyklus von Nichtwohngebäuden das Bindeglied zwischen der theoretischen Planungsphase und dem tatsächlichen Betrieb dar. Während in der Planungsphase der Energiebedarf mithilfe von normierten Verfahren oder Gebäudesimulationen prognostiziert wird, weicht die energetische Realität im Betrieb oft von diesen Vorhersagen ab. Erfahrungen aus realen Monitorings zeigen, dass allein durch systematische Datenanalyse, das Erkennen von Betriebsfehlern in der Haustechnik und die Optimierung der Regelstrategien Energieeinsparungen von bis zu 10 % ohne Komforteinbußen realisiert werden können.
+Bei dem im Rahmen dieser Projektarbeit untersuchten Objekt handelt es sich laut vorliegendem Messdatensatz um Klink- bzw. Krankenhauskomplex. Dies lässt sich aus der Struktur der installierten Datenpunkte ableiten, die neben Lager- und Verkehrsflächen auch Funktionsbereiche wie eine Intensivstation erfassen. 
+Die haustechnische Betriebsführung eines solchen Klinikkomplexes unterliegt strengen Anforderungen. In Intensivpflegebereichen müssen Raumtemperaturen und Luftwechselraten ganzjährig in ausfallsicheren Grenzen geregelt werden. Im Gegensatz zu klassischen Büro- oder Schulgebäuden existiert kein ausgeprägter Nacht- oder Wochenend-Absenkbetrieb für das Gesamtgebäude, was dauerhaft zu hohen Grundlasten führt. Des Weiteren erfordert das Zusammenspiel aus Heizung, Fußbodenheizung und Raumlufttechnischen Anlagen eine präzise Abstimmung der Vorlauftemperaturen. 
+Das Ziel des Kapitels 6 ist die konventionelle Erstellung eines Monitoringberichts als fundierte Vergleichsgrundlage. Hierbei werden die bereitgestellten Messdaten mittels Excel strukturiert und grafisch aufbereitet um anschließend ausgewertet werden zu können. In den folgenden Zwischenschritten erfolgt zunächst eine Datenprüfung auf Plausibilität und Vollständigkeit. Darauf aufbauend werden grafische Analysen durchgeführt, um die Ergebnisse auszuwerten. Im Anschluss werden die Ergebnisse bewertet und zusammengefasst.   
+Datenprüfung
+Bevor aus einem energetischen Monitoring Optimierungen oder Kennwerte abgeleitet werden können, müssen die Messdaten überprüft werden. Fehlerhafte Sensoren, Übertragungsunterbrechungen oder falsch kalibrierte Messgeräte führen oft zu Fehlinterpretationen. Die Datenprüfung stellt sicher, dass die nachfolgenden Auswertungen auf einer verlässlichen Basis stehen.
+Der zur Verfügung gestellte Datensatz besteht aus 23 Spalten die die thermischen, elektrischen und regelungstechnischen Zustände verschiedener Gebäude erfassen. Diese lassen sich in folgende Kategorien unterteilen:
+Thermische Messgrößen (Temperaturen)
+Vorlauf- (VL) und Rücklauftemperaturen (RL) für die statischen Heizungen und Fußbodenheizungen (FBH) der Gebäudezonen.
+Vorlauf- (VL) und Rücklauftemperaturen (RL) des primären Heizregisters der RLT-Anlage sowie Außenlufttemperatur (AUL) und Zulufttemperatur (ZUL).
+Elektrische und energetische Verbrauchswerte (Zähler)
+Wärmemengenzähler (WMZ), der die kumulierten thermische Energie erfasst.
+Stromzähler zur separaten Messung der kumulierten elektrischen Arbeit des RLT-Abluftventilators und des RLT-Zuluftventilators.
+Regelungstechnische Werte 
+Anzeige, ob in Betrieb oder außer Betrieb.
+Der Messdatenkopf des übergebenden Datensatzes ist in  REF _Ref238206392 \h  \* MERGEFORMAT Abbildung 1 abgebildet.
+
+Abbildung 1: Messdatenkopf
+Die Daten zeigen das Betriebsverhalten des Klinikkomplexes unter dem Einfluss wechselnder äußerer und innerer Randbedingungen. Sie dokumentieren, wie die Heiz- und Lüftungsanlagen auf die Witterung reagieren und ob die Wärmeübergabe in den Räumen funktioniert.
+Die Messdaten beginnen am 01.11.2024 um 00:00:00 Uhr und folgen einem lückenlosen 15-Minuten-Intervall. Die Datenaufzeichnung endet am 30.06.2026 um 12:30:00 Uhr. Somit entspricht das Zeitraster genau den Empfehlungen für die Dauer eines energetischen Monitorings, in welchem mindestens zwei Heizperioden und eine Sommerperiode abgedeckt sein sollten.
+In  REF _Ref238206549 \h  \* MERGEFORMAT Tabelle 1: Datenprüfung REF _Ref238206552 \h  \* MERGEFORMAT Tabelle 1 werden die vorher benannten Spalten noch einmal einzeln aufgezeigt und jeweils auf Plausibilität bewertet.
+Tabelle 1: Datenprüfung
+Spalte
+Bezeichnung
+Einheit
+Wertebereich
+Min./Max.
+Plausibilität/Bewertung
+-
+Datum
+-
+01.11.2024 00:00:00 Uhr bis 30.06.2026 23:30:00 Uhr
+Vollständig und konstant vorhanden
+Bildet die zeitliche Systemachse
+15 Minuten Abstände
+1
+Zähler 019 - WMZ\ (M-Bus DSN 2) (M-Bus DSN 2) - Energie (Momentanwert)
+kWh
+92327 / 191792
+Plausibel
+Zeigt stetigen Zuwachs (Monotonie)
+Kontinuierlicher Energieverbrauch
+2
+RLT primär\VL Temp.
+°C
+18,78 / 75,12
+Plausibel
+Hoher Maximalwert von 75 °C
+3
+RLT primär\RL Temp.
+°C
+12,81 / 66,31
+Plausibel
+4
+statische Heizung -Lager (Geb.2)\VL Temp.
+°C
+19,23 / 66,13
+Plausibel
+5
+statische Heizung -Lager(Geb.2)\RL Temp.
+°C
+19,22 / 56,66
+Plausibel
+Liegt konsequent unter der Vorlauftemperatur
+6
+statische Heizung -Gebäude 1 (Geb.3)\VL Temp.
+°C
+18,43 / 66,3
+Plausibel
+7
+statische Heizung -Gebäude 1 (Geb.3)\RL Temp.
+°C
+19,09 / 58,89
+Auffällig!
+Das Minimum des Rücklaufs liegt über dem des Vorlaufs
+8
+Anlage KL01 - RLT02/03.01\AUL Temp.
+°C
+-7,11 / 38,94
+Plausibel
+Reale Jahrestemperaturen 
+9
+Anlage KL01 - RLT02/03.01\ZUL Temp.
+°C
+15,62 / 32,99
+Zeigt auffällig hohes Maximum
+10
+Zähler 021 - Strom RLT02/03 Abluftventilator\Energie (M-Bus DSN 1)
+kWh
+24662,35 / 60290,23
+Plausibel
+Monoton steigend
+Kontinuierlicher Betrieb der Lüftung
+11
+Zähler 022 - Strom RLT02/03 Zuluftventilator\Energie (M-Bus DSN 1)
+kWh
+26700,98 / 53906,45
+Plausibel
+12
+statische Heizflächen Geb.06\VL Temp.
+°C
+0 / 61,11
+Auffällig!
+Min-Wert von 0 deutet auf Aussetzer der Datenaufzeichnung hin
+13
+statische Heizflächen Geb.06\RL Temp.
+°C
+0 / 48,69
+Auffällig!
+Min-Wert von 0 deutet auf Aussetzer der Datenaufzeichnung hin
+14
+Fußbodenheizung Geb.06\VL Temp.
+°C
+0 / 43,51
+Auffällig!
+Min-Wert von 0 deutet auf Aussetzer der Datenaufzeichnung hin
+15
+Fußbodenheizung Geb.06\RL Temp.
+°C
+0 / 34,23
+Auffällig!
+Min-Wert von 0 deutet auf Aussetzer der Datenaufzeichnung hin
+16
+statische Heizflächen Geb.06\HK Pumpe Betrieb
+-
+0 / 1
+Plausibel 
+17
+Fußbodenheizung Geb.06\HK Pumpe Betrieb
+-
+0 / 1
+Plausibel
+18
+VL-Sollwert Fußbodenheizung
+°C
+0 / 22
+Auffällig!
+Max-Wert scheint sehr gering zu sein
+19
+VL-Sollwert Stat Heizfläche
+°C
+0 / 60,9
+Plausibel
+20
+FBH Geb.08 KI-Räume\VL Temp.
+°C
+23,57 / 49,01
+Auffällig!
+Max-Wert scheint sehr hoch zu sein
+21
+FBH Geb.08 KI-Räume\RL Temp.
+°C
+21,47 / 45,37
+Auffällig!
+Sehr hohe Rücklauftemperatur 
+22
+FBH Geb.08 Intensivpflege\VL Temp.
+°C
+23,16 / 49,11
+Auffällig!
+Max-Wert scheint sehr hoch zu sein
+23
+FBH Geb.08 Intensivpflege\RL Temp.
+°C
+18,19 / 34,55
+Plausibel
+
+
+Grafische Aufbereitung in diversen Grafikformaten
+ 
+Abbildung 2: Grafische Ableitung Zähler 019 – WMZ
+Dieses Liniendiagramm visualisiert den fortlaufend ansteigenden, kumulierten Zählerstand der Energiemenge eines spezifischen Wärmemengenzählers, aufgetragen über den gesamten Erfassungszeitraum in chronologischer Reihenfolge auf der horizontalen x-Achse.
+
+Abbildung 3: Grafische Ableitung Regelgüte statische Heizung: Soll- und Ist-Vorlauf
+In diesem Liniendiagramm wird der zeitliche Verlauf der vom System berechneten Soll-Vorlauftemperatur direkt mit der tatsächlich gemessenen Ist-Vorlauftemperatur der statischen Heizflächen des Gebäudes 06 überlagert und verglichen.
+
+Abbildung 4: Grafische Ableitung Heizkurve: Außentemp. vs. Vorlauftemp. Geb. 06
+Dieses Streudiagramm visualisiert die gefahrene Heizkurve, indem die gemessene Ist-Vorlauftemperatur auf der vertikalen y-Achse als unverbundene Punktwolke in direkte Abhängigkeit zur jeweiligen Außentemperatur auf der horizontalen x-Achse gesetzt wird.
+
+
+Abbildung 5: Grafische Ableitung RLT primär/VL-Temp. Februar 2025
+Dieser Carpetplot visualisiert die primäre Vorlauftemperatur der RLT-Anlage für den Monat Februar 2025 als farbcodierte Heatmap, detailliert aufgeschlüsselt nach Wochentagen in den Spalten und 15-Minuten-Intervallen in den Zeilen.
+
+Abbildung 6: Grafische Ableitung RLT primär/RL-Temp. Februar 2025
+Dieser Carpetplot veranschaulicht die primäre Rücklauftemperatur der RLT-Anlage im Februar 2025. Die farbcodierte Matrix gliedert die gemessenen Werte detailliert nach Wochentagen in den Spalten und 15-Minuten-Intervallen in den Zeilen auf.
+
+
+
+Abbildung 7: Grafische Ableitung Regelgüte Fußbodenheizung: Soll- und Ist-Vorlauf
+Diese grafische Darstellung als Liniendiagramm stellt die vom Leitsystem vorgegebene Soll-Vorlauftemperatur der parallel gemessenen Ist-Vorlauftemperatur der Fußbodenheizung im Gebäude 06 im kontinuierlichen zeitlichen Verlauf völlig wertneutral gegenüber.
+
+Abbildung 8: Grafische Ableitung Hydraulicher Abgleich: Zonenvergleich VL-Temp.
+Dieses komplexe Liniendiagramm bildet die gemessenen Ist-Vorlauftemperaturen von vier unterschiedlichen Heizkreisen – umfassend statische Heizflächen sowie Fußbodenheizungen aus Gebäude 06 und Gebäude 08 – parallel im zeitlichen Verlauf ab.
+
+Abbildung 9: Grafische Ableitung Effizienz: Temperaturspreizung (Delta T)
+Hierbei handelt es sich um ein Liniendiagramm, welches die berechnete Temperaturdifferenz (Spreizung) zwischen Vorlauf und Rücklauf in Kelvin für die statische Heizung und die Fußbodenheizung im zeitlichen Verlauf darstellt.
+
+Abbildung 10: Grafische Ableitung RLT-Anlage: Außenluft vs. Zuluft
+Das vorliegende Liniendiagramm dokumentiert die kontinuierliche zeitliche Entwicklung der von außen angesaugten Außenlufttemperatur und setzt diese indirekte visuelle Relation zur Temperatur der in das Gebäude eingeblasenen Zuluft.
+
+Abbildung 11: Grafische Ableitung Stromverbrauch RLT-Ventilatoren (Tageswerte)
+Diese grafische Auswertung in Form eines Liniendiagramms veranschaulicht den aggregierten täglichen elektrischen Energieverbrauch, gemessen in Kilowattstunden, und zwar separat abgebildet für den Abluftventilator sowie den Zuluftventilator der raumlufttechnischen Anlage.
+
+Abbildung 12: Grafische Ableitung Täglicher Wärmeverbrauch
+Im Gegensatz zu den vorherigen Darstellungen visualisiert dieses klassische Säulendiagramm den absoluten, aufsummierten täglichen Wärmeverbrauch der gesamten Anlage in Kilowattstunden, wobei jeder vertikale Balken für einen spezifischen Kalendertag steht.
+Auswertung der Ergebnisse
+Durch die systematische grafische Aufbereitung der Messdaten in Kapitel  REF _Ref239246625 \r \h  \* MERGEFORMAT 6.3, ist nun eine detaillierte Auswertung, Fehleranalyse und die Feststellung von Betriebsfehlern in der Anlagentechnik des untersuchten Klinikkomplexes möglich. Wird die Heizkurve und die Heizgrenztemperatur anhand des Streudiagramms (Abbildung 4) betrachtet, wir ersichtlich, dass die Heizungsanlage Mängel in der witterungsgeführten Regelung aufweist. Häufig sind Heizkurven in der Praxis gar nicht spezifisch eingestellt oder weisen eine viel zu steile Ausrichtung auf, was zu unnötig hohen Vorlauftemperaturen führt. In dem hier vorliegenden Fall werden Vorlauftemperaturen im Bereich von 30°C bis hin zu 40°C generiert, selbst wenn die Außentemperatur mehr wie 15°C aufweist. Dies kann daran liegen, dass eine klar definierte Heizgrenztemperatur fehlt. Es macht Sinn in Nichtwohngebäuden dafür einen gewissen Schwellenwert einzurichten. Dieser sollte in etwa bei 15°C Außentemperatur liegen, bei dessen erreichen die Heizung komplett abgestellt wird. Zudem sind keine getrennten Heizkurven erkennbar für den Tag- und Nachtbetrieb oder für Wochenenden. Dies führt zu einem überflüssigen Wärmeverbrauch, im Übergangs- und Sommerbetrieb. Diese Erkenntnis wird in dem Säulendiagramm (Abbildung 12) erkennbar aufgezeigt. Es zeigt selbst im Sommer keinen vollständigen Abfall des Wärmeverbrauchs.
+Die raumlufttechnische Anlage (RLT-Anlage) stellt in Ihrem Betriebsverhalten einen weiteren kritischen Punkt dar. Aus den Carpetplots der Vor- und Rücklauftemperaturen (Abbildung 5 und 6), sowie aus der Analyse des elektrischen Ventilatorstroms (Abbildung 11) geht hervor, dass die RLT-Anlage in einem kontinuierlichen Dauerbetrieb laufen. Eine dauerhafte Lüftung über 24 Stunden ist jedoch nicht für reguläre Stations-, Verwaltungs-, oder Lagerbereiche energetisch nicht zu rechtfertigen. Dies wird in der Praxis in der Regel nur für hochsensible Bereich ausgeführt, wie zum Beispiel Operationssäle, Archive oder in der Intensivpflege. Ebenso fehlt eine gesteuerte Nachtlüftung, um die Gebäude in den Hitzeperioden nachts herunterzukühlen. Eine solche Auskühlung sollte nur dann stattfinden, wenn es nachts im Innenraum auch über 24 °C sind, der Mittelwert der Außentemperatur über drei Tage (Tag und Nacht) über 18°C liegt oder es im Innenraum dauerhaft wärmer ist als im Außenbereich.
+Außerdem deckt der Zonenvergleich (Abbildung 8) bei dem hydraulischen Abgleich, in der Wärmeverteilung einen Mangel auf. In dem Gebäude 08 werden in den KI-Räumen zeitweise Spitzenwerte Bei den Vorlauftemperaturen von bis zu 50°C erreicht. Das sind nahezu dieselben Vorlauftemperaturen, wie bei den statischen Heizflächen. Bei Fußbodenheizungen handelt es sich um Niedertemperatursysteme, dies sind Sie systembedingt. Eine solche Abweichung kann auf einen defekten Mischerkreis in der Unterstation hinweisen oder dieser wird manuell übersteuert. Außerdem kann es auf eine fehlerhafte Regelvorgabe innerhalb der Gebäudeleittechnik hinweisen. Ein solcher Zustand bringt nicht nur die akute Gefahr einer thermischen Überhitzung der betroffenen Räume mit sich, sondern er führt ebenso zu massiven, unkontrollierten Leitungsverlusten im Gebäude.
+Eine Abrundung findet das gesamte Fehlerbild in der Analyse der Temperaturspreizung (Abbildung 9). In der Auswertung der thermischen Effizienz ist zu erkennen, dass die Temperaturdifferenzen zwischen dem Vor- und Rücklauf teils bei nahe zu einem Kelvin sind. Dabei handelt es sich um immer wiederkehrende Phasen. Wenn das Heizungswasser  ohne einen nennenswerten Temperaturabfall durch das System zirkuliert, kann in den Räumen keine effiziente Wärmeabnahme stattfinden. Laufen die Umwälzpumpen in diesen Zeiten mangels einer Differenzdruckregelung ungeregelt weiter, wird kontinuierlich elektrische Energie für eine nutzlose Wasserzirkulation verschwendet.
+Bewertung der Ergebnisse
+Zusammenfassung 
+Bericht 
+Nachweisführung mittels KI-Agenten
+Einleitung
+Zwischenschritt 1: …
+Zwischenschritt 2: …
+Zwischenschritt 3: ….
+Zwischenschritt 3: ….
+Zwischenschritt 3: ….
+Zwischenschritt 4: Bericht 
+Vergleich der konventionellen Bearbeitung mit der durch KI-Agenten
+Einleitung
+Zwischenschritt 1: 
+Gegenüberstellung der Ergebnisse für die Kontrollkriterien
+Vergleich der Ergebnisse
+Optimierung
+Diskussion 
+Zusammenfassung der Ergebnisse
+Zwischenschritt 2: 
+Gegenüberstellung der Ergebnisse für die Kontrollkriterien
+Vergleich der Ergebnisse
+Optimierung
+Diskussion 
+Zusammenfassung der Ergebnisse
+Zwischenschritt 3: ….
+…
+Zwischenschritt 4: Bericht 
+Gegenüberstellung der Ergebnisse für die Kontrollkriterien
+Vergleich der Ergebnisse
+Optimierung
+Diskussion 
+Zusammenfassung der Ergebnisse
+Zusammenfassung über alle Schritte und Kontrollkriterien
+Beantwortung der Forschungsfragen
+Zusammenfassung, Empfehlungen und Ausblick
+Literaturverzeichnis
+
+EINE EMPIRISCHE E RHEBUNG
+Stecken, Tobias. Diagrammkompetenz von Grundschülern - Eine empirische Erhebung : Entwicklung, Validierung und Auswertung eines Diagrammverständnistests auf Basis eines Kompetenzmodells für den Mathematikunterricht, WTM-Stein, 2015. ProQuest Ebook Central, http://ebookcentral.proquest.com/lib/fhmuensterde/detail.action?docID=6274175.
+Created from fhmuensterde on 2026-09-01 09:27:42.
+
+Felix Brosius,  SPSS Umfassendes Handbuch zu Statistik und Datenanalyse, 8. Auflage - 2018, mitp Verlag GmbH & Co.KG, Frechen 
+
+ITC Internet-Trade-Center (2026), Energiewissen - Hestmap https://online-enms.de/energiewissen/heatmap/ Abruf: 01.09.2026
