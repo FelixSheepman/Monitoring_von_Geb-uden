@@ -20,6 +20,7 @@ import streamlit as st
 from monitoring_agent.comparison import agreement_summary, compare_findings, compare_table1
 from monitoring_agent.data_loader import load_measurements
 from monitoring_agent.excel_export import export_workbook
+from monitoring_agent.extras import savings_explanations
 from monitoring_agent.llm_agent import MODELS, build_facts, generate_narrative, make_client
 from monitoring_agent import figures as fx
 from monitoring_agent.config import COLUMNS
@@ -254,6 +255,9 @@ with tabs["🧠 Auswertung"]:
         st.caption("Bezug: gemessene Wärme (Zähler 019) und Ventilatorstrom (Zähler 021/022). Weitere Potenziale "
                    "(Pumpenabschaltung, Spreizung, Geb.08) sind mit den vorhandenen Daten nicht beziffert. "
                    "Annahmen im Einstellungsmenü unter „Schwellenwerte & Annahmen“ anpassbar.")
+        for blk in savings_explanations(df_full, thresholds):
+            with st.expander(blk.heading, expanded=blk.heading.startswith(("Maßnahme", "Gesamt"))):
+                st.write(blk.text)
 
 if settings.show_comparison:
     with tabs["⚖️ Vergleich"]:

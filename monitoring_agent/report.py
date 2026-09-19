@@ -36,6 +36,7 @@ class Report:
     figures: list[FigureEntry] = field(default_factory=list)
     narrative: list[NarrativeBlock] = field(default_factory=list)
     savings: pd.DataFrame | None = None
+    thresholds: Thresholds | None = None
     timings: dict[str, float] = field(default_factory=dict)
     anomaly_counts: dict[str, int] = field(default_factory=dict)
     carpet_year: int = 2025
@@ -168,7 +169,7 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
     timings["Auswertungstext"] = time.perf_counter() - t0
 
     return Report(df=df, quality_df=quality_df, figures=figs, narrative=narrative,
-                  timings=timings, anomaly_counts=anomaly_counts, savings=savings,
+                  timings=timings, anomaly_counts=anomaly_counts, savings=savings, thresholds=th,
                   carpet_year=carpet_year, carpet_month=carpet_month)
 
 

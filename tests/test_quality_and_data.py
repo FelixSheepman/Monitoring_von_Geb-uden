@@ -199,3 +199,29 @@ def test_availability_counts_known_zero_dropouts(df):
 def test_delta_t_threshold_changes_narrative(df):
     strict = [b for b in build_report(df, thresholds=Thresholds(delta_t_min=5.0)).narrative if "spreizung" in b.heading][0]
     assert "über 5 Kelvin" in strict.text
+
+
+@needs_data
+def test_word_report_places_text_directly_below_its_figure(df, monkeypatch, tmp_path):
+    from docx import Document
+    from monitoring_agent import word_export
+    monkeypatch.setattr(word_export, "_figure_png", lambda fig: None)
+    rep = build_report(df)
+    path = tmp_path / "b.docx"
+    word_export.export_docx(rep, str(path))
+    paras = [p.text for p in Document(str(path)).paragraphs]
+    i = next(k for k, t in enumerate(paras) if t.startswith("Abbildung 3:"))
+    assert paras[i + 1] == "Heizkurve ohne erkennbare Heizgrenze"
+    assert not any(t == "3 Auswertung der Ergebnisse" for t in paras)
+
+
+@needs_data
+def test_word_report_explains_savings_measures(df, monkeypatch, tmp_path):
+    from docx import Document
+    from monitoring_agent import word_export
+    monkeypatch.setattr(word_export, "_figure_png", lambda fig: None)
+    path = tmp_path / "b.docx"
+    word_export.export_docx(build_report(df), str(path))
+    text = " ".join(p.text for p in Document(str(path)).paragraphs)
+    for needle in ("Maßnahme 1: Heizgrenze", "Maßnahme 2: Nachtabsenkung", "Gesamteinordnung", "dritten Potenz"):
+        assert needle in text

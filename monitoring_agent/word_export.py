@@ -55,13 +55,28 @@ def _figure_png(fig) -> bytes | None:
         return None
 
 
-def export_docx(report, path_or_buffer, narrative=None, comparison=None, include_savings: bool = True, title="Monitoringbericht",
-                subtitle="Automatisierte Auswertung durch den KI-Agenten") -> list[str]:
-    """Schreibt den Bericht. `narrative`: Liste von NarrativeBlock (Default: regelbasiert aus report).
-    `comparison`: optional (Tabelle1-Vergleich als DataFrame). Gibt Warnungen zurueck (z.B. fehlende Bilder)."""
+def export_docx(report, path_or_buffer, narrative=None, comparison=None, include_savings: bool = True,
+                title="Monitoringbericht", subtitle="Automatisierte Auswertung durch den KI-Agenten") -> list[str]:
+    """Schreibt den Bericht. Die Auswertungstexte stehen direkt unter der zugehoerigen Abbildung.
+    Texte ohne Abbildungsbezug (z.B. Gesamtzusammenfassung) folgen am Ende des Abschnitts 2.
+    Gibt Warnungen zurueck (z.B. fehlende Bilder)."""
+    from .extras import savings_explanations
+    from .settings import Thresholds
+
     warnings: list[str] = []
     narrative = narrative if narrative is not None else report.narrative
     df = report.df
+    keys_in_order = [e.key for e in report.figures]
+
+    # Jeder Text steht unter der LETZTEN Abbildung, auf die er sich bezieht (dann sind alle Bezuege schon gezeigt).
+    placed: dict[str, list] = {}
+    unassigned = []
+    for b in narrative:
+        valid = [k for k in b.figure_keys if k in keys_in_order]
+        if valid:
+            placed.setdefault(max(valid, key=keys_in_order.index), []).append(b)
+        else:
+            unassigned.append(b)
 
     doc = Document()
     sec = doc.sections[0]
@@ -86,13 +101,14 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
     cap.add_run("Tabelle 1: Datenprüfung").bold = True
     _table(doc, q, [1.0, 4.6, 1.2, 1.5, 1.5, 1.8, 5.0], status_col="Plausibilität", font_pt=7)
 
-    doc.add_heading("2 Grafische Aufbereitung", 1)
-    by_key: dict[str, list] = {}
-    for b in narrative:
-        for k in b.figure_keys:
-            by_key.setdefault(k, []).append(b)
+    doc.add_heading("2 Grafische Aufbereitung und Auswertung", 1)
+    doc.add_paragraph(
+        "Zu jeder Abbildung folgt direkt die zugehörige Auswertung. Betrifft eine Auswertung mehrere Abbildungen, "
+        "steht sie unter der letzten davon; der Bezug ist jeweils angegeben."
+    )
+    fig_no = {e.key: i for i, e in enumerate(report.figures, start=1)}
     missing_images = 0
-    for i, entry in enumerate(report.figures, start=1):
+    for entry in report.figures:
         png = _figure_png(entry.figure)
         if png:
             doc.add_picture(io.BytesIO(png), width=Cm(16))
@@ -101,35 +117,41 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
             missing_images += 1
             doc.add_paragraph("[Abbildung konnte nicht gerendert werden]")
         c = doc.add_paragraph()
-        c.add_run(f"Abbildung {i}: {entry.title}. ").bold = True
+        c.add_run(f"Abbildung {fig_no[entry.key]}: {entry.title}. ").bold = True
         c.add_run(entry.caption)
+        for b in placed.get(entry.key, []):
+            doc.add_heading(b.heading, 3)
+            doc.add_paragraph(b.text)
+            refs = [f"Abbildung {fig_no[k]}" for k in b.figure_keys if k in fig_no]
+            if len(refs) > 1:
+                p = doc.add_paragraph()
+                r = p.add_run("Bezug: " + ", ".join(refs))
+                r.italic, r.font.size = True, Pt(9)
     if missing_images:
         warnings.append(
             f"{missing_images} Abbildung(en) konnten nicht als Bild eingefügt werden "
             "(Diagramm-Rendering benötigt einen installierten Chrome/Chromium-Browser)."
         )
+    if unassigned:
+        doc.add_heading("Zusammenfassende Einordnung", 2)
+        for b in unassigned:
+            doc.add_heading(b.heading, 3)
+            doc.add_paragraph(b.text)
 
-    doc.add_heading("3 Auswertung der Ergebnisse", 1)
-    for b in narrative:
-        doc.add_heading(b.heading, 2)
-        doc.add_paragraph(b.text)
-        refs = [f"Abbildung {i}" for i, e in enumerate(report.figures, start=1) if e.key in b.figure_keys]
-        if refs:
-            p = doc.add_paragraph()
-            r = p.add_run("Bezug: " + ", ".join(refs))
-            r.italic, r.font.size = True, Pt(9)
-
-    next_no = 4
+    next_no = 3
     if getattr(report, "savings", None) is not None and include_savings:
         doc.add_heading(f"{next_no} Energieeinsparpotenzial", 1)
-        doc.add_paragraph(
-            "Grobe Abschätzung auf Basis der gemessenen Verbräuche. Die Annahmen sind in der Tabelle genannt "
-            "und im Einstellungsmenü der App anpassbar."
-        )
+        blocks = savings_explanations(df, getattr(report, "thresholds", None) or Thresholds())
+        intro, m1, m2, concl = blocks
+        doc.add_heading(intro.heading, 2)
+        doc.add_paragraph(intro.text)
         cap = doc.add_paragraph()
-        cap.add_run("Tabelle 2: Einsparpotenzial").bold = True
+        cap.add_run("Tabelle 2: Einsparpotenzial der untersuchten Maßnahmen").bold = True
         _table(doc, report.savings[["Maßnahme", "Annahme", "Einsparung kWh/a", "Kosten €/a", "Anteil %"]],
                [3.6, 6.2, 2.4, 2.0, 1.6])
+        for b in (m1, m2, concl):
+            doc.add_heading(b.heading, 2)
+            doc.add_paragraph(b.text)
         next_no += 1
 
     if comparison is not None and len(comparison):
