@@ -1,0 +1,21 @@
+ID;Schritt;Kriterium;Vergleich;Grenzwert;Einheit;Beschreibung
+DP1;Datenprüfung;Prüfumfang: alle Messspalten geprüft;>=;100;%;Anteil der erwarteten Spalten, für die eine Prüfung mit Ergebnis vorliegt
+DP2;Datenprüfung;Kennwerte Min/Max stimmen mit der manuellen Kopfzeile überein;>=;100;%;Vergleich der berechneten Min-/Max-Werte mit den Kopfzeilen der Excel-Datei
+DP3;Datenprüfung;Trefferquote der manuell gefundenen Auffälligkeiten;>=;90;%;Anteil der manuell als auffällig markierten Spalten, die der Agent ebenfalls markiert
+DP4;Datenprüfung;Genauigkeit der Agent-Auffälligkeiten;>=;70;%;Anteil der vom Agent markierten Spalten, die auch manuell auffällig waren
+DP5;Datenprüfung;Erfasste Heizperioden (mind. 80 % der Tage);>=;2;Heizperioden;Anforderung an die Dauer des Monitorings (Kap. 4)
+DP6;Datenprüfung;Erfasste Sommerperioden (mind. 80 % der Tage);>=;1;Sommerperioden;Anforderung an die Dauer des Monitorings (Kap. 4)
+GR1;Grafikerstellung;Abdeckung der manuell erstellten Abbildungen;>=;100;%;Anteil der manuellen Abbildungen (Kap. 6.3), die der Agent reproduziert
+GR2;Grafikerstellung;Diagrammtyp entspricht der manuellen Abbildung;>=;100;%;Vergleich von Linien-, Streu-, Säulen- und Carpetplot-Darstellung
+GR3;Grafikerstellung;Konfigurationsregeln nach Kap. 5.2 eingehalten;>=;100;%;Keine Sekundärachse, feste Carpetplot-Farbskala, Heizkurve als Punktwolke mit Trendlinie
+GR4;Grafikerstellung;Abbildungen vollständig beschriftet;>=;100;%;Titel, Achsenbeschriftung und Bildunterschrift vorhanden
+AW1;Auswertung;Manuell gefundene Befunde vom Agent gefunden;>=;100;%;Fachliche Befunde aus Kap. 6.4
+AW2;Auswertung;Auswertungstexte quantitativ belegt;>=;100;%;Anteil der Texte mit mindestens zwei berechneten Zahlenwerten
+AW3;Auswertung;Auswertungstexte mit Abbildungsbezug;>=;80;%;Anteil der Texte, die einer Abbildung zugeordnet sind
+AW4;Auswertung;Zusätzliche Befunde des Agenten (nicht in der manuellen Auswertung);info;;Anzahl;Informativ, dient der Diskussion
+BW1;Bewertung;Alle Befunde bewertet (Schweregrad und Empfehlung);>=;100;%;Vollständigkeit der Bewertung
+BW2;Bewertung;Einstufung durch Regel nachvollziehbar;>=;100;%;Jede Einstufung nennt Regel und Kennzahl
+BW3;Bewertung;Einsparpotenzial beziffert und mit dem 10-%-Ziel verglichen;>=;1;ja=1;Kap. 4 nennt ein Optimierungspotenzial von 10 %
+BW4;Bewertung;Übereinstimmung mit der manuellen Bewertung;>=;80;%;Benötigt reference/manual_bewertung.csv (Kap. 6.5 der Hausarbeit)
+BE1;Berichtserstellung;Gliederung nach Kap. 6 vollständig;>=;100;%;Einleitung, Datenprüfung, Grafik, Auswertung, Bewertung, Zusammenfassung
+BE2;Berichtserstellung;Alle Abbildungen mit Nummer und Bildunterschrift;>=;100;%;Vollständigkeit der Beschriftung im Bericht

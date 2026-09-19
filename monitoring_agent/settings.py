@@ -28,6 +28,9 @@ class Settings:
     strict_rules: bool = False
     show_savings: bool = True
     show_explorer: bool = True
+    show_assessment: bool = True
+    show_process: bool = True
+    show_research: bool = True
     llm_model: str = "claude-opus-5"
 
 
@@ -38,6 +41,9 @@ FEATURE_LABELS = {
     "use_llm": ("LLM-Auswertung (Claude)", "Ein Sprachmodell formuliert die Auswertung; benötigt einen Anthropic-API-Key."),
     "strict_rules": ("Erweiterte Prüfregeln (v2)", "Zusätzliche Regeln: hohe Zuluft-Maxima, FBH-Grenzwerte, Vor-/Rücklauf-Widersprüche an beiden Spalten. Zum Vergleich v1 gegen v2 in Kap. 8.2.3."),
     "show_savings": ("Energieeinsparpotenzial", "Schätzt das Einsparpotenzial (Heizgrenze, RLT-Nachtabsenkung) gegenüber dem 10-%-Ziel."),
+    "show_assessment": ("Bewertung (Kap. 6.5)", "Stuft die Befunde nach Schweregrad ein und gibt Empfehlungen; erscheint auch im Word-Bericht."),
+    "show_process": ("Vorgehen und Kontrollkriterien (Kap. 4/5)", "Zwischenschritte, Kontrollkriterien mit automatischer Prüfung, Agent-Steckbrief, Sensorik-Übersicht."),
+    "show_research": ("Forschungsfragen (Kap. 9/10)", "Antwortentwürfe mit Belegen, Theorie-Praxis-Abgleich, Empfehlungen und Ausblick."),
     "show_explorer": ("Explorer (freie Diagramme)", "Eigene Spalten, Zeitraum und Carpetplots frei auswählen."),
     "enable_word_export": ("Word-Berichtsexport", "Erzeugt einen formatierten Bericht (.docx) mit Abbildungen."),
 }

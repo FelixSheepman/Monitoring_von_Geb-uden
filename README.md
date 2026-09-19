@@ -35,6 +35,11 @@ monitoring_agent/      Kernlogik (von CLI und Web-App gemeinsam genutzt)
   figures.py                 Die 11 Plotly-Abbildungen aus Kap. 6.3
   report.py                   Orchestriert Prüfung + Abbildungen zu einem Report
   excel_export.py              Export als native Excel-Arbeitsmappe
+  assessment.py                Bewertung, Datenabdeckung, Messdatenkopf, Sensorik, Theorie-Praxis
+  process.py                   Zwischenschritte, Kontrollkriterien, Kapitel-8-Vergleich, Forschungsfragen
+  word_export.py               Word-Bericht und Kapitel-8-Entwurf
+  ui.py                        Streamlit-Ansichten für Bewertung, Vorgehen, Kapitel 8, Forschung
+reference/              Manuelle Referenz (Tabelle 1, Befunde, Abbildungen) und Kontrollkriterien als CSV
 cli.py                  Kommandozeilen-Variante
 app.py                  Streamlit-Web-App
 source_docs/            Rohdaten + Textauszug der Hausarbeit (Referenz)
@@ -59,7 +64,12 @@ output/                 Generierte Reports (lokal, nicht Teil der Abgabe)
 | Energieeinsparpotenzial | Abschätzung mit einstellbaren Annahmen gegenüber dem 10-%-Ziel |
 | Explorer | Freie Diagramme (Linie, Streu, Carpetplot) mit Zeitraumfilter |
 | Schwellenwerte | Heizgrenze, Delta T, FBH-Grenze, Preise u. a. per Regler |
-| Word-/Excel-Export | Formatierter Bericht bzw. Arbeitsmappe |
+| Bewertung (Kap. 6.5) | Befunde nach Schweregrad (Maximum aus Häufigkeit und Energie) mit Empfehlungen |
+| Kontrollkriterien (Kap. 5.3, 7, 8) | 18 Kriterien in 5 Zwischenschritten, automatisch geprüft; Referenzvergleich und Eigenprüfung getrennt |
+| Kapitel-8-Entwurf | Gegenüberstellung, Vergleich, Optimierung, Diskussion, Zusammenfassung je Zwischenschritt (Word) |
+| Forschungsfragen (Kap. 9/10) | Antwortentwürfe mit Belegen, Theorie-Praxis-Abgleich, Empfehlungen, Ausblick |
+| Word-Bericht | Gliederung nach Kap. 6, Abbildungsnummern wie in der Hausarbeit (Abb. 1 Messdatenkopf) |
+| Excel-Export | Arbeitsmappe mit nativen, editierbaren Diagrammen |
 
 ## LLM-Auswertung einrichten
 

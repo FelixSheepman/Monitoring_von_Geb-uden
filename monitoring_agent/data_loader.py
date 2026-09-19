@@ -45,3 +45,20 @@ def infer_interval_minutes(df: pd.DataFrame) -> float:
     if deltas.empty:
         return float("nan")
     return deltas.dt.total_seconds().median() / 60
+
+
+def read_manual_minmax(path_or_buffer, sheet_name: str = "Tabelle1") -> pd.DataFrame | None:
+    """Liest die in der Excel-Kopfzeile hinterlegten Min-/Max-Werte (manuelle Kennwerte, Zeilen 4 und 5).
+    Liefert None, wenn die Zeilen nicht mit 'Min'/'Max' beschriftet sind."""
+    import openpyxl
+
+    wb = openpyxl.load_workbook(path_or_buffer, read_only=True, data_only=True)
+    try:
+        rows = list(wb[sheet_name].iter_rows(min_row=4, max_row=5, values_only=True))
+    finally:
+        wb.close()
+    if len(rows) < 2 or str(rows[0][0]).strip() != "Min" or str(rows[1][0]).strip() != "Max":
+        return None
+    shorts = [c.short for c in COLUMNS]
+    return pd.DataFrame({"Min": rows[0][1:1 + len(shorts)], "Max": rows[1][1:1 + len(shorts)]}, index=shorts).apply(
+        pd.to_numeric, errors="coerce")

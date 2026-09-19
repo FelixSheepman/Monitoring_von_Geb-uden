@@ -19,7 +19,7 @@ import pandas as pd
 import streamlit as st
 
 from monitoring_agent.comparison import agreement_summary, compare_findings, compare_table1
-from monitoring_agent.data_loader import load_measurements
+from monitoring_agent.data_loader import load_measurements, read_manual_minmax
 from monitoring_agent.excel_export import export_workbook
 from monitoring_agent.extras import savings_explanations
 from monitoring_agent.llm_agent import MODELS, build_facts, generate_narrative, make_client
@@ -28,7 +28,11 @@ from monitoring_agent.config import COLUMNS
 from monitoring_agent.quality import quality_to_dataframe, run_data_quality
 from monitoring_agent.report import build_report
 from monitoring_agent.settings import FEATURE_LABELS, Settings, Thresholds
-from monitoring_agent.word_export import export_docx
+from monitoring_agent.process import Ctx, evaluate_criteria, optimization_hints
+from monitoring_agent.structure import STEPS
+from monitoring_agent.ui import (render_assessment, render_chapter8, render_data_extras, render_process,
+                                 render_research)
+from monitoring_agent.word_export import export_chapter8_docx, export_docx
 
 st.set_page_config(page_title="Monitoring KI-Agent", layout="wide", page_icon="📊")
 
@@ -133,6 +137,14 @@ def _load(file_bytes: bytes):
     return df, time.perf_counter() - t0
 
 
+@st.cache_data(show_spinner=False)
+def _manual_minmax(file_bytes: bytes):
+    try:
+        return read_manual_minmax(io.BytesIO(file_bytes))
+    except Exception:
+        return None
+
+
 @st.cache_data(show_spinner="Führe Datenprüfung durch und erstelle Abbildungen...")
 def _build(file_bytes: bytes, year: int, month: int, resample_rule: str | None, anomalies: bool,
            th: Thresholds, strict: bool):
@@ -199,9 +211,20 @@ if llm_result is not None:
 active_narrative = llm_result.blocks if (llm_result is not None and narrative_source == "Claude (LLM)") \
     else report.narrative
 
+ctx = Ctx(report=report, manual_minmax=_manual_minmax(input_bytes), assessment=report.assessment,
+          coverage=report.coverage, llm_result=llm_result, manual_hours=st.session_state.get("manual_hours", 0.0))
+crit = evaluate_criteria(ctx)
+hints = optimization_hints(crit, ctx, thresholds.fbh_limit)
+
 tab_names = ["🔍 Datenprüfung", "📈 Abbildungen", "🧠 Auswertung"]
+if settings.show_assessment:
+    tab_names.append("🏁 Bewertung")
 if settings.show_comparison:
     tab_names.append("⚖️ Vergleich")
+if settings.show_process:
+    tab_names.append("🧭 Vorgehen")
+if settings.show_research:
+    tab_names.append("🎓 Forschung")
 if settings.show_explorer:
     tab_names.append("🔎 Explorer")
 tab_names.append("⬇️ Export")
@@ -220,8 +243,9 @@ with tabs["🔍 Datenprüfung"]:
     st.dataframe(
         qdf.style.map(lambda v: f"background-color: {'#C6EFCE' if v == 'Plausibel' else '#FFC7CE'}",
                       subset=["Plausibilität"]),
-        use_container_width=True, hide_index=True, height=560,
+        width="stretch", hide_index=True, height=560,
     )
+    render_data_extras(report)
 
 narrative_by_key: dict[str, list] = {}
 for block in active_narrative:
@@ -232,9 +256,10 @@ with tabs["📈 Abbildungen"]:
     if settings.show_anomalies and report.anomaly_counts:
         st.caption("Rote Rauten markieren erkannte Anomalien: " + " · ".join(
             f"{k}: {v}" for k, v in report.anomaly_counts.items()))
-    for entry in report.figures:
-        st.plotly_chart(entry.figure, use_container_width=True, key=entry.key)
-        st.caption(entry.caption)
+    st.caption("Die Nummerierung folgt der Hausarbeit: Abbildung 1 ist der Messdatenkopf (Tab Datenprüfung), die Diagramme beginnen bei Abbildung 2.")
+    for number, entry in enumerate(report.figures, start=2):
+        st.plotly_chart(entry.figure, width="stretch", key=entry.key)
+        st.caption(f"**Abbildung {number}: {entry.title}.** {entry.caption}")
         for block in narrative_by_key.get(entry.key, []):
             st.info(f"**{block.heading}**\n\n{block.text}")
         st.divider()
@@ -277,13 +302,25 @@ with tabs["🧠 Auswertung"]:
         s2.metric("Kosten", f"{total_row['Kosten €/a']:,.0f} €/a".replace(",", "."))
         s3.metric("Anteil am Gesamtverbrauch", f"{total_row['Anteil %']:.1f} %",
                   f"{total_row['Anteil %'] - 10:+.1f} %-Punkte zum 10-%-Ziel", delta_color="off")
-        st.dataframe(sv, use_container_width=True, hide_index=True)
+        st.dataframe(sv, width="stretch", hide_index=True)
         st.caption("Bezug: gemessene Wärme (Zähler 019) und Ventilatorstrom (Zähler 021/022). Weitere Potenziale "
                    "(Pumpenabschaltung, Spreizung, Geb.08) sind mit den vorhandenen Daten nicht beziffert. "
                    "Annahmen im Einstellungsmenü unter „Schwellenwerte & Annahmen“ anpassbar.")
         for blk in savings_explanations(df_full, thresholds):
             with st.expander(blk.heading, expanded=blk.heading.startswith(("Maßnahme", "Gesamt"))):
                 st.write(blk.text)
+
+if settings.show_assessment:
+    with tabs["🏁 Bewertung"]:
+        render_assessment(report, settings.show_savings)
+
+if settings.show_process:
+    with tabs["🧭 Vorgehen"]:
+        render_process(report, crit, llm_result)
+
+if settings.show_research:
+    with tabs["🎓 Forschung"]:
+        render_research(ctx, crit, report, thresholds, settings.show_savings)
 
 if settings.show_comparison:
     with tabs["⚖️ Vergleich"]:
@@ -308,7 +345,7 @@ if settings.show_comparison:
                          "Trefferquote %": sm["Trefferquote % (manuelle Auffälligkeiten vom Agent gefunden)"],
                          "Genauigkeit %": sm["Genauigkeit % (Agent-Auffälligkeiten auch manuell auffällig)"],
                          "nur Agent": sm["nur Agent auffällig"], "nur manuell": sm["nur manuell auffällig"]})
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
         st.caption("Trefferquote: Anteil der manuell gefundenen Auffälligkeiten, die der Agent auch findet. "
                    "Genauigkeit: Anteil der Agent-Auffälligkeiten, die auch manuell auffällig waren. "
                    "v2 aktivieren: Einstellungsmenü → „Erweiterte Prüfregeln (v2)“.")
@@ -319,12 +356,12 @@ if settings.show_comparison:
         st.dataframe(
             view.style.map(lambda v: f"background-color: {'#C6EFCE' if v == 'übereinstimmend' else '#FFE699'}",
                            subset=["Ergebnis"]),
-            use_container_width=True, hide_index=True,
+            width="stretch", hide_index=True,
         )
 
         st.markdown("**Fachliche Kontrollkriterien (Kap. 6.4)**")
         st.dataframe(compare_findings([b.heading for b in report.narrative]),
-                     use_container_width=True, hide_index=True)
+                     width="stretch", hide_index=True)
 
         if settings.show_timings:
             total = sum(report.timings.values())
@@ -342,6 +379,8 @@ if settings.show_comparison:
             right.markdown(f"*Claude ({llm_result.model})*")
             for b in llm_result.blocks:
                 right.markdown(f"**{b.heading}**\n\n{b.text}")
+
+        render_chapter8(crit, hints, report)
 
 if settings.show_explorer:
     with tabs["🔎 Explorer"]:
@@ -363,7 +402,7 @@ if settings.show_explorer:
                     st.warning("Verschiedene Einheiten gewählt: " + ", ".join(sorted(units)) +
                                ". Besser getrennt darstellen (keine Sekundärachsen).")
                 st.plotly_chart(fx.fig_zone_comparison(view, [(n, n) for n in picked], "Freie Auswahl",
-                                                       unit=", ".join(sorted(units))), use_container_width=True)
+                                                       unit=", ".join(sorted(units))), width="stretch")
             else:
                 st.info("Bitte mindestens eine Spalte wählen.")
         elif kind == "Streudiagramm (x/y)":
@@ -371,7 +410,7 @@ if settings.show_explorer:
             x_col = cx.selectbox("x-Achse", names, index=names.index("RLT KL01 Außenluft"))
             y_col = cy.selectbox("y-Achse", names, index=names.index("Stat. Heizung Geb.06 VL (Ist)"))
             st.plotly_chart(fx.fig_heating_curve(sub, x_col, y_col, f"{y_col} vs. {x_col}", x_label=x_col, y_label=y_col),
-                            use_container_width=True)
+                            width="stretch")
         else:
             cc, cy_, cm = st.columns(3)
             col = cc.selectbox("Spalte", names, index=1)
@@ -383,7 +422,7 @@ if settings.show_explorer:
                            (lo, hi))
             unit = next(c.unit for c in COLUMNS if c.short == col)
             st.plotly_chart(fx.fig_carpet(df_full, col, int(year), int(month), f"{col} {int(month):02d}/{int(year)}",
-                                          zmin=zr[0], zmax=zr[1], unit=unit), use_container_width=True)
+                                          zmin=zr[0], zmax=zr[1], unit=unit), width="stretch")
 
 with tabs["📖 Anleitung"]:
     render_guide()
@@ -416,7 +455,7 @@ with tabs["⬇️ Export"]:
                     cmp_df = compare_table1(report.quality_df) if settings.show_comparison else None
                     st.session_state["docx_warnings"] = export_docx(
                         export_report, buf, narrative=active_narrative, comparison=cmp_df,
-                        include_savings=settings.show_savings)
+                        include_savings=settings.show_savings, include_assessment=settings.show_assessment)
                     st.session_state["docx_bytes"] = buf.getvalue()
             for w in st.session_state.get("docx_warnings", []):
                 st.warning(w)
@@ -426,3 +465,17 @@ with tabs["⬇️ Export"]:
                                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         else:
             st.info("Word-Export ist im Einstellungsmenü ausgeschaltet.")
+
+    if settings.enable_word_export:
+        st.divider()
+        st.markdown("**Kapitel 8 als Word-Entwurf** – Gegenüberstellung, Vergleich, Optimierung, Diskussion und Zusammenfassung je Zwischenschritt")
+        if st.button("Kapitel-8-Entwurf erzeugen"):
+            buf8 = io.BytesIO()
+            notes = {s: st.session_state.get(f"disc_{s}", "") for s in STEPS}
+            export_chapter8_docx(buf8, crit, hints, notes, report.timings)
+            st.session_state["docx8_bytes"] = buf8.getvalue()
+        if "docx8_bytes" in st.session_state:
+            st.download_button("📥 kapitel8_vergleich.docx", st.session_state["docx8_bytes"],
+                               file_name="kapitel8_vergleich.docx",
+                               mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        st.caption("Die Diskussion schreibt ihr im Tab „Vergleich“ (Bereich Kapitel 8); dort eingegebener Text wird übernommen.")

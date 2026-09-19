@@ -9,9 +9,10 @@ Beim Technischen Monitoring von Nichtwohngebäuden fallen immer wiederkehrende A
 **Was ihr bekommt:**
 
 - eine **Datenprüfung** aller Messspalten (plausibel oder auffällig, mit Begründung),
-- **13 Abbildungen** (Verläufe, Heizkurve, Carpetplots, Zonenvergleich, Spreizung, Tagesverbräuche, Pumpenlaufzeiten, Datenverfügbarkeit),
+- den **Messdatenkopf** (Abbildung 1) und **13 weitere Abbildungen** (Verläufe, Heizkurve, Carpetplots, Zonenvergleich, Spreizung, Tagesverbräuche, Pumpenlaufzeiten, Datenverfügbarkeit); die Nummerierung entspricht der Hausarbeit,
 - **Auswertungstexte**, deren Zahlen live aus euren Daten berechnet werden,
-- eine Abschätzung des **Energieeinsparpotenzials**,
+- eine Abschätzung des **Energieeinsparpotenzials** und eine **Bewertung** aller Befunde nach Schweregrad mit Empfehlungen,
+- **Kontrollkriterien** für jeden Zwischenschritt mit automatischer Prüfung und einen **Entwurf für Kapitel 8** (Vergleich mit der manuellen Auswertung),
 - einen **Word-Bericht** und eine **Excel-Arbeitsmappe** zum Weiterverwenden.
 
 **Wichtig zum Einordnen:** Das Tool ersetzt keine fachliche Bewertung. Es liefert belastbare Zahlen und Hinweise. Ob eine Auffälligkeit ein Fehler ist, beurteilt ihr mit Kenntnis der Anlage.
@@ -89,7 +90,7 @@ In der öffentlichen Cloud-Version werden hochgeladene Dateien auf dem Server de
 | Bereich | Wozu |
 |---|---|
 | **Eingabedaten** | Datei hochladen oder den Beispieldatensatz nutzen |
-| **Carpetplot-Zeitraum** | Jahr und Monat für die beiden Carpetplots (Abbildung 4 und 5) |
+| **Carpetplot-Zeitraum** | Jahr und Monat für die beiden Carpetplots (Abbildung 5 und 6) |
 | **Darstellung Zeitreihen** | Auflösung der Liniendiagramme: Rohdaten (15 Min.), Stundenmittel oder Tagesmittel |
 | **⚙️ Einstellungen – Funktionen an/aus** | Einzelne Funktionen ein- oder ausschalten (Abschnitt 5) |
 | **🎚️ Schwellenwerte & Annahmen** | Grenzwerte und Annahmen per Regler ändern (Abschnitt 5) |
@@ -104,21 +105,24 @@ Zeitraum, Anzahl der Messpunkte, Zahl der plausiblen und der auffälligen Spalte
 
 | Tab | Inhalt |
 |---|---|
-| **🔍 Datenprüfung** | Tabelle 1: jede Spalte mit Min, Max, Fehlwerten, Status und Begründung. Filter: Alle, Nur Auffällige, Nur Plausible |
-| **📈 Abbildungen** | Alle 13 Diagramme mit Erklärung und der passenden Auswertung darunter |
+| **🔍 Datenprüfung** | Tabelle 1: jede Spalte mit Min, Max, Fehlwerten, Status und Begründung. Darunter der Messdatenkopf (Abbildung 1) und die Datenabdeckung der Heiz- und Sommerperioden |
+| **📈 Abbildungen** | Alle Diagramme (Abbildung 2 bis 14) mit Erklärung und der passenden Auswertung darunter |
 | **🧠 Auswertung** | Die Auswertungstexte, dazu das Energieeinsparpotenzial mit Erläuterung |
-| **⚖️ Vergleich** | Gegenüberstellung mit einer manuellen Auswertung (für die Studienarbeit, Kap. 8) |
+| **🏁 Bewertung** | Alle Befunde nach Schweregrad eingestuft, mit Regel, Kennzahl und Empfehlung (Kap. 6.5), dazu Zusammenfassung und Empfehlungen (Kap. 6.6) |
+| **⚖️ Vergleich** | Gegenüberstellung mit der manuellen Auswertung und der Entwurf für Kapitel 8 je Zwischenschritt |
+| **🧭 Vorgehen** | Zwischenschritte, Kontrollkriterien mit automatischer Prüfung, Aufbau des KI-Agenten, Sensorik-Übersicht, Diagrammtypen |
+| **🎓 Forschung** | Antwortentwürfe zu den Forschungsfragen (Kap. 9), Theorie-Praxis-Abgleich, Empfehlungen und Ausblick (Kap. 10) |
 | **🔎 Explorer** | Eigene Diagramme frei zusammenstellen |
-| **⬇️ Export** | Word-Bericht und Excel-Arbeitsmappe erzeugen |
+| **⬇️ Export** | Word-Bericht, Kapitel-8-Entwurf und Excel-Arbeitsmappe erzeugen |
 | **📖 Anleitung** | Diese Anleitung |
 
-Die Tabs Vergleich und Explorer erscheinen nur, wenn die zugehörige Funktion eingeschaltet ist.
+Die Tabs Bewertung, Vergleich, Vorgehen, Forschung und Explorer erscheinen nur, wenn die zugehörige Funktion eingeschaltet ist.
 
 ## 5. Einstellungen
 
 ### 5.1 Funktionen an- und ausschalten
 
-Unter **⚙️ Einstellungen – Funktionen an/aus** steht für jede Funktion ein Schalter. Standardmäßig sind alle eingeschaltet, außer der LLM-Auswertung und den erweiterten Prüfregeln (v2).
+Unter **⚙️ Einstellungen – Funktionen an/aus** steht für jede Funktion ein Schalter. Standardmäßig sind alle eingeschaltet, außer der LLM-Auswertung und den erweiterten Prüfregeln (v2). Das Ausschalten blendet nur die Ansicht aus; die Kontrollkriterien rechnen weiter.
 
 | Schalter | Wirkung |
 |---|---|
@@ -128,6 +132,9 @@ Unter **⚙️ Einstellungen – Funktionen an/aus** steht für jede Funktion ei
 | **LLM-Auswertung (Claude)** | Ein Sprachmodell formuliert die Auswertung. Benötigt einen Anthropic-API-Key (siehe 6.7) |
 | **Erweiterte Prüfregeln (v2)** | Zusätzliche, strengere Prüfregeln in der Datenprüfung |
 | **Energieeinsparpotenzial** | Zeigt die Abschätzung im Tab „Auswertung“ und im Word-Bericht |
+| **Bewertung (Kap. 6.5)** | Blendet den Tab „Bewertung“ ein und nimmt die Bewertung in den Word-Bericht auf |
+| **Vorgehen und Kontrollkriterien (Kap. 4/5)** | Blendet den Tab „Vorgehen“ ein |
+| **Forschungsfragen (Kap. 9/10)** | Blendet den Tab „Forschung“ ein |
 | **Explorer (freie Diagramme)** | Blendet den Tab „Explorer“ ein |
 | **Word-Berichtsexport** | Schaltet den Word-Export im Tab „Export“ frei |
 
@@ -218,7 +225,7 @@ Im Juli liegt die Vorlauftemperatur bei etwa 22 bis 29 °C, also nahe der Raumte
 2. Tab **⬇️ Export**, Knopf **Word-Bericht erzeugen**. Das Rendern der Abbildungen dauert etwa 30 Sekunden.
 3. Auf **monitoring_bericht.docx** klicken.
 
-**Aufbau des Berichts:** 1 Datenprüfung, 2 Grafische Aufbereitung und Auswertung (jeder Text steht direkt unter seiner Abbildung), 3 Energieeinsparpotenzial, 4 Vergleich mit der manuellen Auswertung.
+**Aufbau des Berichts** (in Anlehnung an Kapitel 6 der Hausarbeit): 1 Einleitung und Datengrundlage, 2 Datenprüfung (mit Messdatenkopf als Abbildung 1), 3 Grafische Aufbereitung und Auswertung (jeder Text steht direkt unter seiner Abbildung, Nummerierung wie in der Arbeit), 4 Energieeinsparpotenzial, 5 Bewertung der Ergebnisse, 6 Zusammenfassung und Empfehlungen (mit Theorie-Praxis-Abgleich), 7 Vergleich mit der manuellen Auswertung.
 
 Wenn statt der Diagramme der Hinweis „Abbildung konnte nicht gerendert werden“ steht, fehlt dem Server ein Browser für das Bildrendern (siehe 8). Die **Excel-Arbeitsmappe** ist die Alternative: Sie enthält die Datenprüfung und alle Diagramme als bearbeitbare Excel-Diagramme.
 
@@ -260,6 +267,35 @@ Im Tab **🔎 Explorer** stellt ihr Diagramme selbst zusammen:
 
 Beispiel: „RLT KL01 Außenluft“ und „RLT KL01 Zuluft“ im Januar 2026 mit Rohdaten (15 Min.) zeigen, wie stark die Lüftungsanlage die Außenluft aufheizt.
 
+### 6.9 Beispiel: Kontrollkriterien prüfen und Kapitel 8 vorbereiten
+
+Dieser Ablauf unterstützt den Vergleich der konventionellen Bearbeitung mit der KI-gestützten (Kapitel 5 bis 8 der Arbeit).
+
+1. Öffnet den Tab **🧭 Vorgehen**. Ganz oben steht die Kapitel-Landkarte, darunter für jeden der fünf Zwischenschritte (Datenprüfung, Grafikerstellung, Auswertung, Bewertung, Berichtserstellung), wie viele Kontrollkriterien erfüllt sind. Im Beispiel sind es **16 von 18 bewertbaren Kriterien**.
+2. Lest die Spalte **Art**: Nur 6 der Kriterien sind ein **Referenzvergleich** gegen euer manuelles Ergebnis (davon 4 erfüllt). Die übrigen 12 sind **Eigenprüfungen** (Vollständigkeit, Konfiguration, Anforderungen). Sie belegen nicht, dass der Agent inhaltlich dasselbe findet wie ihr. Formuliert das in der Arbeit ehrlich so.
+3. Schaut euch die nicht erfüllten Kriterien an: **DP3** (Trefferquote 70 % bei 90 % Soll) und **DP4** (Genauigkeit 50 % bei 70 % Soll). Der Optimierungsvorschlag steht im Tab **⚖️ Vergleich** unter Kapitel 8. Schaltet zur Probe **Erweiterte Prüfregeln (v2)** ein: DP3 springt auf 100 % und es sind dann 17 von 18 Kriterien erfüllt.
+4. Öffnet im Tab **⚖️ Vergleich** den Bereich **Kapitel 8: Vergleich je Zwischenschritt**. Für jeden Zwischenschritt gibt es die Gliederung der Arbeit: Gegenüberstellung, Vergleich, Optimierung, Diskussion, Zusammenfassung. **Die Diskussion schreibt ihr selbst** in das Textfeld.
+5. Im Tab **⬇️ Export** erzeugt der Knopf **Kapitel-8-Entwurf erzeugen** ein Word-Dokument mit 8.1 bis 8.7. Eure Diskussionstexte sind darin enthalten; leere Diskussionen sind als „[Diskussion von den Bearbeitern zu ergänzen]“ markiert.
+
+**Kriterien anpassen:** Die Kriterien und Grenzwerte stehen in `reference/kontrollkriterien.csv`. Sie sind Vorschläge und mit dem Betreuer abzustimmen. Ändert ihr dort einen Grenzwert, wirkt er nach dem Neuladen der App sofort. Die manuelle Bewertung aus Kapitel 6.5 tragt ihr in `reference/manual_bewertung.csv` ein (Spalten `Befund_Key;Manuell_Schweregrad;Manuelle_Empfehlung`). Danach wird das Kriterium **BW4** bewertbar.
+
+### 6.10 Beispiel: Befunde bewerten und priorisieren
+
+1. Tab **🏁 Bewertung** öffnen. Im Beispiel gibt es 8 Befunde: 2 mit hohem, 5 mit mittlerem und 1 mit geringem Schweregrad.
+2. Klickt einen Befund auf, zum Beispiel „Heizkurve ohne erkennbare Heizgrenze“. Ihr seht die Kennzahl (96 % der Zeitschritte), die **Einstufungsregel** und die **Empfehlung**.
+3. Die Regel ist überall gleich: Maßgeblich ist das **Maximum** aus der Häufigkeit (mittel ab 10 % der Zeit, hoch ab 50 %) und der energetischen Relevanz (mittel ab 1 % des Verbrauchs, hoch ab 5 %). Für sicherheits- oder bilanzrelevante Befunde gilt mindestens die Stufe „mittel“. Ein Beispiel dafür ist die Zone Intensivpflege.
+4. Ganz unten steht die **Zusammenfassung und Empfehlungen** (Kap. 6.6). Sie nennt die Schwerpunkte und den Abstand zum 10-%-Ziel.
+
+**Hinweis:** Die Einstufung ist ein Vorschlag nach offenen Regeln. Die Grenzen sind in `monitoring_agent/assessment.py` hinterlegt und lassen sich dort ändern.
+
+### 6.11 Beispiel: Forschungsfragen und Theorie-Praxis-Abgleich
+
+1. Tab **🎓 Forschung** öffnen. Oben stehen die Forschungsfragen aus `reference/forschungsfragen.csv`. **Es sind Entwürfe.** Stimmt sie mit dem Betreuer ab und ändert sie in der Datei.
+2. Unter jeder Frage steht ein **Antwortentwurf mit Belegen**, zum Beispiel: „Der Agent erfüllt 16 von 18 bewertbaren Kontrollkriterien“ oder „Beziffert werden 6.854 kWh pro Jahr, das sind 7,1 %“. Schreibt eure eigene Antwort in das Textfeld darunter und übernehmt sie in die Arbeit. Die Eingabe bleibt nur in der laufenden Sitzung erhalten.
+3. Für die Frage nach dem Zeitvorteil (FF2) tragt ihr zuerst den manuellen Aufwand im Bereich **⏱️ Laufzeit des Agenten** ein. Erst dann berechnet die App den Faktor.
+4. Der **Theorie-Praxis-Abgleich** prüft sieben theoretische Aussagen aus eurer Arbeit gegen die Messdaten, zum Beispiel die Heizgrenze von 15 °C (nicht bestätigt, weil in 96 % der Zeit weiter geheizt wird) oder die Auslegung von Fußbodenheizungen als Niedertemperatursysteme (teilweise bestätigt, Abweichung in den KI-Räumen von Gebäude 08).
+5. Darunter stehen Zusammenfassung, Empfehlungen und ein **Ausblick als Entwurf** für Kapitel 10.
+
 ## 7. Ergebnisse richtig lesen
 
 - **Auffällig heißt nicht fehlerhaft.** Die Datenprüfung meldet Hinweise. Ob ein Wert ein Fehler ist, entscheidet ihr mit Anlagenkenntnis. Beispiel: Ein Rücklauf über dem Vorlauf kann ein Messfehler sein, aber auch ein kurzer Rückwärtsfluss.
@@ -276,7 +312,8 @@ Beispiel: „RLT KL01 Außenluft“ und „RLT KL01 Zuluft“ im Januar 2026 mit
 | Diagramme sehen sehr unruhig aus | Unter „Darstellung Zeitreihen“ auf Stunden- oder Tagesmittel umstellen |
 | Im Word-Bericht fehlen die Diagramme | Dem Rechner oder Server fehlt ein Chrome/Chromium-Browser für das Bildrendern. Lokal Chrome installieren, in der Cloud die Datei `packages.txt` mit `chromium` prüfen. Ersatzweise die Excel-Arbeitsmappe nutzen |
 | Der Knopf „Auswertung mit Claude erzeugen“ fehlt | Schalter „LLM-Auswertung (Claude)“ einschalten und API-Key eintragen |
-| Ein Tab fehlt (Vergleich, Explorer) | Die zugehörige Funktion ist unter „Einstellungen“ ausgeschaltet |
+| Ein Tab fehlt (Bewertung, Vergleich, Vorgehen, Forschung, Explorer) | Die zugehörige Funktion ist unter „Einstellungen“ ausgeschaltet |
+| Ein Kriterium steht auf „nicht bewertbar“ | Es fehlt eine Referenz, meist die manuelle Bewertung aus Kapitel 6.5 (`reference/manual_bewertung.csv`) oder die Min-/Max-Zeilen in der Excel-Kopfzeile |
 | Nach einem Update erscheinen alte Ergebnisse | Seite im Browser neu laden (F5). Bei lokaler Nutzung die App neu starten |
 | Ergebnisse weichen von einer manuellen Auswertung ab | Das ist gewollt untersuchbar: Tab „Vergleich“ zeigt spaltenweise, wo und warum |
 
@@ -339,4 +376,8 @@ Die Zuordnung von Excel-Spalten zu Messpunkten (Zone und Rolle, z. B. Vorlauf, R
 | **Heizgrenze** | Außentemperatur, ab der die Heizung abgeschaltet werden sollte |
 | **Hydraulischer Abgleich** | Einstellung, damit alle Heizkreise richtig mit Wärme versorgt werden |
 | **Carpetplot** | Farbfläche aus Tag (waagerecht), Uhrzeit (senkrecht) und Messwert (Farbe) |
+| **Zwischenschritt** | Einer der fünf Arbeitsschritte: Datenprüfung, Grafikerstellung, Auswertung, Bewertung, Berichtserstellung |
+| **Kontrollkriterium** | Messbare Bedingung, an der geprüft wird, ob ein Zwischenschritt gelungen ist |
+| **Referenzvergleich / Eigenprüfung** | Vergleich mit dem manuellen Ergebnis / Prüfung von Vollständigkeit und Konfiguration ohne Referenz |
+| **Schweregrad** | Einstufung eines Befunds in hoch, mittel oder gering nach festen Regeln |
 | **Trefferquote / Genauigkeit** | Kennzahlen im Vergleich: gefundene Auffälligkeiten von allen erwarteten / richtige von allen gemeldeten |

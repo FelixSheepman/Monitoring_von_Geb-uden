@@ -1,0 +1,13 @@
+Nr;Titel_manuell;Diagrammtyp;Werkzeug;Agent_Key
+1;Messdatenkopf;Tabelle;Excel;messdatenkopf
+2;Zähler 019 – WMZ;Linie;Excel;wmz_kumuliert
+3;Regelgüte statische Heizung: Soll- und Ist-Vorlauf;Linie;Excel;regelguete_stat_heizung
+4;Heizkurve: Außentemp. vs. Vorlauftemp. Geb. 06;Streu;Excel;heizkurve
+5;RLT primär/VL-Temp. Februar 2025;Carpetplot;Excel;carpet_rlt_vl
+6;RLT primär/RL-Temp. Februar 2025;Carpetplot;Excel;carpet_rlt_rl
+7;Regelgüte Fußbodenheizung: Soll- und Ist-Vorlauf;Linie;Excel;regelguete_fbh
+8;Hydraulischer Abgleich: Zonenvergleich VL-Temp.;Linie;Excel;zonenvergleich
+9;Effizienz: Temperaturspreizung (Delta T);Linie;Excel;delta_t
+10;RLT-Anlage: Außenluft vs. Zuluft;Linie;Excel;rlt_aul_zul
+11;Stromverbrauch RLT-Ventilatoren (Tageswerte);Linie;Excel;strom_rlt_taeglich
+12;Täglicher Wärmeverbrauch;Säule;Excel;waerme_taeglich

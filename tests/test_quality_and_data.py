@@ -210,7 +210,7 @@ def test_word_report_places_text_directly_below_its_figure(df, monkeypatch, tmp_
     path = tmp_path / "b.docx"
     word_export.export_docx(rep, str(path))
     paras = [p.text for p in Document(str(path)).paragraphs]
-    i = next(k for k, t in enumerate(paras) if t.startswith("Abbildung 3:"))
+    i = next(k for k, t in enumerate(paras) if t.startswith("Abbildung 4:"))
     assert paras[i + 1] == "Heizkurve ohne erkennbare Heizgrenze"
     assert not any(t == "3 Auswertung der Ergebnisse" for t in paras)
 

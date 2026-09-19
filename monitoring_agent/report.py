@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 from . import anomalies as an
+from .assessment import build_assessment, data_coverage, measurement_head
 from . import figures as fx
 from .metrics import daily_consumption
 from .extras import availability_daily, pump_runtime_monthly, savings_potential
@@ -37,6 +38,9 @@ class Report:
     narrative: list[NarrativeBlock] = field(default_factory=list)
     savings: pd.DataFrame | None = None
     thresholds: Thresholds | None = None
+    head_table: pd.DataFrame | None = None
+    coverage: pd.DataFrame | None = None
+    assessment: pd.DataFrame | None = None
     timings: dict[str, float] = field(default_factory=dict)
     anomaly_counts: dict[str, int] = field(default_factory=dict)
     carpet_year: int = 2025
@@ -166,10 +170,15 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
     t0 = time.perf_counter()
     narrative = build_narrative(df, th)
     savings = savings_potential(df, th)
+    t1 = time.perf_counter()
+    head_table, coverage = measurement_head(df), data_coverage(df)
+    assessment = build_assessment(df, quality_df, savings, th)
+    timings["Bewertung"] = time.perf_counter() - t1
     timings["Auswertungstext"] = time.perf_counter() - t0
 
     return Report(df=df, quality_df=quality_df, figures=figs, narrative=narrative,
                   timings=timings, anomaly_counts=anomaly_counts, savings=savings, thresholds=th,
+                  head_table=head_table, coverage=coverage, assessment=assessment,
                   carpet_year=carpet_year, carpet_month=carpet_month)
 
 
