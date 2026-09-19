@@ -41,18 +41,30 @@ source_docs/            Rohdaten + Textauszug der Hausarbeit (Referenz)
 output/                 Generierte Reports (lokal, nicht Teil der Abgabe)
 ```
 
-## Stand
+## Funktionen (im Einstellungsmenü der App einzeln an-/abschaltbar)
 
-- Datenprüfung (Tabelle 1) automatisiert nachgebaut, reproduziert die manuell
-  gefundenen Auffälligkeiten (Aussetzer, RL>VL, zu niedriger Sollwert) und
-  findet zusätzlich rückläufige Zählerstände.
-- Alle 11 Abbildungen aus Kap. 6.3 (Liniendiagramme, Heizkurve mit Regression,
-  2 Carpetplots, Zonenvergleich, Delta-T, Tageswerte) als interaktive
-  Plotly-Charts sowie als native Excel-Charts.
-- Getestet gegen den vollständigen Datensatz (58.125 Zeitschritte, 23 Spalten).
+| Funktion | Beschreibung |
+|---|---|
+| Datenprüfung (Tabelle 1) | Regelbasiert, generisch, immer auf den Rohdaten |
+| 11 Abbildungen | Interaktive Plotly-Charts, Glättung nur für die Anzeige |
+| Laufzeitmessung | Zeiten je Schritt, Faktor gegenüber manuellem Aufwand |
+| Anomalie-Marker | Nullwert-Aussetzer, Zählerrücksprünge, Delta T < 2 K |
+| Regelbasierte Auswertung | Datengestützte Texte im Stil Kap. 6.4 |
+| Vergleichsansicht | Manuelle Auswertung (`reference/*.csv`) vs. Agent |
+| LLM-Auswertung | Claude formuliert die Auswertung aus den berechneten Kennzahlen |
+| Word-/Excel-Export | Formatierter Bericht bzw. Arbeitsmappe |
 
-## Offene Punkte / mögliche nächste Schritte
+## LLM-Auswertung einrichten
 
-- Automatisch generierter Auswertungstext (Kap. 6.4-Stil) als Ergänzung zu den Grafiken.
-- Vergleichsansicht konventionell vs. KI-Agent (Kap. 8 der Hausarbeit).
-- Export der Abbildungen als Word-/PDF-Bericht.
+API-Key nie ins Repo committen. Lokal: Umgebungsvariable `ANTHROPIC_API_KEY` setzen oder den Key im
+Einstellungsmenü eintragen. Streamlit Cloud: App → Settings → Secrets → `ANTHROPIC_API_KEY = "sk-ant-..."`.
+
+## Tests
+
+```bash
+.venv/Scripts/python.exe -m pip install -r requirements-dev.txt
+.venv/Scripts/python.exe -m pytest tests -q
+```
+
+Die Tests prüfen u. a., dass Min/Max aller 23 Spalten mit eurer manuellen Tabelle 1 übereinstimmen
+und dass alle manuell gefundenen Befunde vom Agenten reproduziert werden.

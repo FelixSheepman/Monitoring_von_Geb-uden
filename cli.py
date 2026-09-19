@@ -28,6 +28,8 @@ def main() -> int:
     parser.add_argument("--input", "-i", required=True, help="Pfad zur Messdaten-.xlsx")
     parser.add_argument("--output", "-o", default="monitoring_report.xlsx",
                          help="Pfad der erzeugten Report-.xlsx (Default: monitoring_report.xlsx)")
+    parser.add_argument("--docx", help="Optional: zusätzlich einen Word-Bericht (.docx) erzeugen")
+    parser.add_argument("--anomalies", action="store_true", help="Anomalien in den Diagrammen markieren")
     parser.add_argument("--carpet-year", type=int, default=2025)
     parser.add_argument("--carpet-month", type=int, default=2)
     args = parser.parse_args()
@@ -42,13 +44,21 @@ def main() -> int:
     print(f"  {len(df):,} Zeitschritte, {df.index.min()} bis {df.index.max()}")
 
     print("Führe Datenprüfung durch und erstelle Abbildungen...")
-    report = build_report(df, carpet_year=args.carpet_year, carpet_month=args.carpet_month)
+    report = build_report(df, carpet_year=args.carpet_year, carpet_month=args.carpet_month,
+                          show_anomalies=args.anomalies)
 
     n_auffaellig = (report.quality_df["Plausibilität"] == "Auffällig!").sum()
     print(f"  {len(report.quality_df)} Spalten geprüft, davon {n_auffaellig} auffällig")
 
     print(f"Schreibe Report: {args.output}")
     export_workbook(report, args.output)
+    if args.docx:
+        from monitoring_agent.comparison import compare_table1
+        from monitoring_agent.word_export import export_docx
+        for w in export_docx(report, args.docx, comparison=compare_table1(report.quality_df)):
+            print("  Hinweis:", w)
+        print(f"Word-Bericht: {args.docx}")
+    print("Laufzeit: " + ", ".join(f"{k} {v:.2f}s" for k, v in report.timings.items()))
     print("Fertig.")
     return 0
 

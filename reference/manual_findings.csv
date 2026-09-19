@@ -1,0 +1,6 @@
+Kontrollkriterium;Manueller_Befund_Kap_6_4;Agent_Block
+Heizkurve / Heizgrenze;Vorlauf 30-40 °C trotz Außentemperatur über 15 °C, keine Heizgrenztemperatur;Heizkurve ohne erkennbare Heizgrenze
+RLT-Betrieb;RLT im 24-h-Dauerbetrieb, keine Nachtabsenkung;RLT-Anlage im Dauerbetrieb ohne erkennbare Nachtabsenkung
+Hydraulischer Abgleich;Geb.08 KI-Räume mit Vorlauf bis 50 °C, nahe an statischer Heizung;Hydraulischer Abgleich: Auffällig hohe FBH-Vorlauftemperatur
+Temperaturspreizung;Delta T teils nahe 1 K, ungeregelte Pumpen;Geringe Temperaturspreizung deutet auf ungeregelte Pumpen hin
+Sommerbetrieb;Wärmeverbrauch fällt im Sommer nicht vollständig ab;Restwärmeverbrauch außerhalb der Heizperiode

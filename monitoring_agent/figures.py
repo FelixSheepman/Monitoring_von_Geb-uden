@@ -178,3 +178,15 @@ def fig_daily_bar(daily: pd.Series, title: str, unit: str = "kWh") -> go.Figure:
     fig.update_layout(**_base_layout(title, f"Verbrauch ({unit})", "Datum"))
     fig.update_layout(showlegend=False)
     return fig
+
+
+def add_anomaly_markers(fig: go.Figure, x, y, name: str, color: str = "#C00000") -> go.Figure:
+    """Legt rote Rautenmarker auf die Anomalie-Zeitpunkte (leere Eingabe -> keine Aenderung)."""
+    if len(x) == 0:
+        return fig
+    fig.add_trace(go.Scattergl(
+        x=x, y=y, mode="markers", name=name,
+        marker=dict(color=color, size=7, symbol="diamond", line=dict(color="white", width=1)),
+        hovertemplate=f"{name}<br>%{{x}}<br>%{{y:.1f}}<extra></extra>",
+    ))
+    return fig

@@ -7,10 +7,12 @@ verwenden.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 import pandas as pd
 
+from . import anomalies as an
 from . import figures as fx
 from .metrics import daily_consumption
 from .narrative import NarrativeBlock, build_narrative
@@ -31,20 +33,26 @@ class Report:
     quality_df: pd.DataFrame
     figures: list[FigureEntry] = field(default_factory=list)
     narrative: list[NarrativeBlock] = field(default_factory=list)
+    timings: dict[str, float] = field(default_factory=dict)
+    anomaly_counts: dict[str, int] = field(default_factory=dict)
     carpet_year: int = 2025
     carpet_month: int = 2
 
 
 def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 2,
-                  display_resample: str | None = None) -> Report:
+                  display_resample: str | None = None, show_anomalies: bool = False) -> Report:
     """`df` ist immer die volle Rohauflösung und wird für Datenprüfung, Carpetplots
     und Tagesverbrauchsberechnungen verwendet (Glätten würde dort Aussetzer/Resets
     verdecken bzw. die Tagesdifferenz-Logik verfälschen). `display_resample`
     (z.B. "h" oder "D") glättet ausschließlich die reinen Zeitverlaufs-Liniendiagramme
     für eine ruhigere Darstellung."""
+    timings: dict[str, float] = {}
+    t0 = time.perf_counter()
     quality_results = run_data_quality(df)
     quality_df = quality_to_dataframe(quality_results)
+    timings["Datenprüfung"] = time.perf_counter() - t0
 
+    t0 = time.perf_counter()
     df_disp = df.resample(display_resample).mean() if display_resample else df
 
     figs: list[FigureEntry] = []
@@ -135,7 +143,44 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
         "Absoluter, täglich aufsummierter Wärmeverbrauch der gesamten Anlage.",
     ))
 
+    anomaly_counts = _apply_anomalies(df, figs) if show_anomalies else {}
+    timings["Grafiken"] = time.perf_counter() - t0
+
+    t0 = time.perf_counter()
     narrative = build_narrative(df)
+    timings["Auswertungstext"] = time.perf_counter() - t0
 
     return Report(df=df, quality_df=quality_df, figures=figs, narrative=narrative,
+                  timings=timings, anomaly_counts=anomaly_counts,
                   carpet_year=carpet_year, carpet_month=carpet_month)
+
+
+def _apply_anomalies(df: pd.DataFrame, figs: list[FigureEntry]) -> dict[str, int]:
+    by_key = {f.key: f.figure for f in figs}
+    counts: dict[str, int] = {}
+
+    def zeros(key: str, cols: list[str], label: str) -> None:
+        idx = an.zero_dropouts(df, cols)
+        counts[f"{label} (Nullwert-Aussetzer)"] = len(idx)
+        fx.add_anomaly_markers(by_key[key], idx.index, [0] * len(idx), "Aussetzer (Wert 0)")
+
+    zeros("regelguete_stat_heizung", ["Stat. Heizung Geb.06 VL (Ist)", "Stat. Heizung Geb.06 VL (Soll)"],
+          "Regelgüte Stat. Heizung")
+    zeros("regelguete_fbh", ["FBH Geb.06 VL (Ist)", "FBH Geb.06 VL (Soll)"], "Regelgüte FBH")
+    zeros("zonenvergleich", ["Stat. Heizung Geb.06 VL (Ist)", "FBH Geb.06 VL (Ist)",
+                              "FBH Geb.08 KI-Räume VL", "FBH Geb.08 Intensivpflege VL"], "Zonenvergleich")
+
+    resets = an.meter_resets(df, "Zähler 019 – WMZ")
+    counts["WMZ (Zählerrücksprung)"] = len(resets)
+    fx.add_anomaly_markers(by_key["wmz_kumuliert"], resets.index, df.loc[resets.index, "Zähler 019 – WMZ"],
+                            "Zählerrücksprung")
+
+    n_low = 0
+    for vl, rl, label in [("Stat. Heizung Geb.06 VL (Ist)", "Stat. Heizung Geb.06 RL", "Stat. Heizung"),
+                          ("FBH Geb.06 VL (Ist)", "FBH Geb.06 RL", "FBH")]:
+        idx = an.low_delta_t(df, vl, rl)
+        n_low += len(idx)
+        fx.add_anomaly_markers(by_key["delta_t"], idx.index, (df[vl] - df[rl]).loc[idx.index],
+                                f"Delta T < 2 K ({label})", color="#7F0000")
+    counts["Delta T < 2 K bei aktivem Betrieb"] = n_low
+    return counts

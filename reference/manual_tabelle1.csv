@@ -1,0 +1,24 @@
+Spalte;Manuell;Manueller_Befund
+1;Plausibel;Zeigt stetigen Zuwachs (Monotonie)
+2;Plausibel;Hoher Maximalwert von 75 °C
+3;Plausibel;
+4;Plausibel;
+5;Plausibel;Liegt konsequent unter der Vorlauftemperatur
+6;Plausibel;
+7;Auffällig;Das Minimum des Rücklaufs liegt über dem des Vorlaufs
+8;Plausibel;Reale Jahrestemperaturen
+9;Auffällig;Zeigt auffällig hohes Maximum (Status in der Tabelle nicht ausgewiesen, aus dem Kommentar abgeleitet)
+10;Plausibel;Monoton steigend
+11;Plausibel;
+12;Auffällig;Min-Wert von 0 deutet auf Aussetzer der Datenaufzeichnung hin
+13;Auffällig;Min-Wert von 0 deutet auf Aussetzer der Datenaufzeichnung hin
+14;Auffällig;Min-Wert von 0 deutet auf Aussetzer der Datenaufzeichnung hin
+15;Auffällig;Min-Wert von 0 deutet auf Aussetzer der Datenaufzeichnung hin
+16;Plausibel;
+17;Plausibel;
+18;Auffällig;Max-Wert scheint sehr gering zu sein
+19;Plausibel;
+20;Auffällig;Max-Wert scheint sehr hoch zu sein
+21;Auffällig;Sehr hohe Rücklauftemperatur
+22;Auffällig;Max-Wert scheint sehr hoch zu sein
+23;Plausibel;
