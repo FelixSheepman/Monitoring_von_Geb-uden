@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 import io
 import os
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -48,8 +49,30 @@ def _api_key_from_environment() -> str:
 st.title("📊 KI-Agent: Technisches Monitoring")
 st.caption(
     "Automatisierte Datenprüfung und grafische Aufbereitung von Monitoring-Messdaten "
-    "– Ersatz für die manuelle Excel-Auswertung aus Kapitel 6 der Hausarbeit."
+    "– Ersatz für die manuelle Excel-Auswertung aus Kapitel 6 der Hausarbeit. "
+    "Neu hier? Öffne den Tab „📖 Anleitung“."
 )
+
+GUIDE_PATH = Path("docs/anleitung.md")
+
+
+def render_guide() -> None:
+    """Zeigt docs/anleitung.md; Bilder (Markdown-Syntax ![..](img/x.png)) werden aus docs/ geladen."""
+    if not GUIDE_PATH.exists():
+        st.warning("Anleitung nicht gefunden (docs/anleitung.md).")
+        return
+    chunk: list[str] = []
+    for line in GUIDE_PATH.read_text(encoding="utf-8").splitlines():
+        m = re.match(r"!\[(.*?)\]\((.*?)\)\s*$", line)
+        if m and (GUIDE_PATH.parent / m.group(2)).exists():
+            if chunk:
+                st.markdown("\n".join(chunk))
+                chunk = []
+            st.image(str(GUIDE_PATH.parent / m.group(2)), caption=m.group(1))
+        else:
+            chunk.append(line)
+    if chunk:
+        st.markdown("\n".join(chunk))
 
 with st.sidebar:
     st.header("Eingabedaten")
@@ -129,6 +152,8 @@ elif use_sample:
 
 if input_bytes is None:
     st.info("Bitte eine Messdaten-.xlsx hochladen oder den Beispieldatensatz aktivieren.")
+    with st.expander("📖 Anleitung", expanded=True):
+        render_guide()
     st.stop()
 
 try:
@@ -180,6 +205,7 @@ if settings.show_comparison:
 if settings.show_explorer:
     tab_names.append("🔎 Explorer")
 tab_names.append("⬇️ Export")
+tab_names.append("📖 Anleitung")
 tabs = dict(zip(tab_names, st.tabs(tab_names)))
 
 with tabs["🔍 Datenprüfung"]:
@@ -358,6 +384,9 @@ if settings.show_explorer:
             unit = next(c.unit for c in COLUMNS if c.short == col)
             st.plotly_chart(fx.fig_carpet(df_full, col, int(year), int(month), f"{col} {int(month):02d}/{int(year)}",
                                           zmin=zr[0], zmax=zr[1], unit=unit), use_container_width=True)
+
+with tabs["📖 Anleitung"]:
+    render_guide()
 
 with tabs["⬇️ Export"]:
     st.subheader("Bericht exportieren")

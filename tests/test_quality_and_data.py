@@ -225,3 +225,28 @@ def test_word_report_explains_savings_measures(df, monkeypatch, tmp_path):
     text = " ".join(p.text for p in Document(str(path)).paragraphs)
     for needle in ("Maßnahme 1: Heizgrenze", "Maßnahme 2: Nachtabsenkung", "Gesamteinordnung", "dritten Potenz"):
         assert needle in text
+
+
+# --- Anleitung bleibt mit dem Code synchron ---
+
+import re as _re
+
+from monitoring_agent.settings import FEATURE_LABELS
+
+GUIDE = Path(__file__).resolve().parent.parent / "docs" / "anleitung.md"
+
+
+def test_guide_mentions_every_feature_switch_and_column():
+    text = GUIDE.read_text(encoding="utf-8")
+    for label, _ in FEATURE_LABELS.values():
+        assert f"**{label}**" in text, f"Schalter fehlt in der Anleitung: {label}"
+    for c in COLUMNS:
+        assert c.excel_name in text, f"Spalte fehlt in der Anleitung: {c.excel_name}"
+
+
+def test_guide_images_exist_and_tabs_are_documented():
+    text = GUIDE.read_text(encoding="utf-8")
+    for rel in _re.findall(r"!\[.*?\]\((.*?)\)", text):
+        assert (GUIDE.parent / rel).exists(), rel
+    for tab in ("Datenprüfung", "Abbildungen", "Auswertung", "Vergleich", "Explorer", "Export", "Anleitung"):
+        assert tab in text

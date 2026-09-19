@@ -41,6 +41,8 @@ source_docs/            Rohdaten + Textauszug der Hausarbeit (Referenz)
 output/                 Generierte Reports (lokal, nicht Teil der Abgabe)
 ```
 
+**Neu hier?** Die ausführliche Anleitung mit Beispielen steht in [docs/anleitung.md](docs/anleitung.md) und in der App im Tab „📖 Anleitung“.
+
 ## Funktionen (im Einstellungsmenü der App einzeln an-/abschaltbar)
 
 | Funktion | Beschreibung |
