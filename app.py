@@ -21,8 +21,11 @@ from monitoring_agent.comparison import agreement_summary, compare_findings, com
 from monitoring_agent.data_loader import load_measurements
 from monitoring_agent.excel_export import export_workbook
 from monitoring_agent.llm_agent import MODELS, build_facts, generate_narrative, make_client
+from monitoring_agent import figures as fx
+from monitoring_agent.config import COLUMNS
+from monitoring_agent.quality import quality_to_dataframe, run_data_quality
 from monitoring_agent.report import build_report
-from monitoring_agent.settings import FEATURE_LABELS, Settings
+from monitoring_agent.settings import FEATURE_LABELS, Settings, Thresholds
 from monitoring_agent.word_export import export_docx
 
 st.set_page_config(page_title="Monitoring KI-Agent", layout="wide", page_icon="📊")
@@ -84,6 +87,20 @@ with st.sidebar:
                                          help="Wird nur für diese Sitzung im Arbeitsspeicher gehalten.")
     settings = Settings(**flags, llm_model=llm_model)
 
+    with st.expander("🎚️ Schwellenwerte & Annahmen", expanded=False):
+        th_defaults = Thresholds()
+        thresholds = Thresholds(
+            heizgrenze_aul=st.slider("Heizgrenze Außentemperatur (°C)", 5.0, 20.0, th_defaults.heizgrenze_aul, 0.5),
+            aktiv_schwelle_vl=st.slider("Aktiver Heizbetrieb ab Vorlauf (°C)", 15.0, 40.0, th_defaults.aktiv_schwelle_vl, 1.0),
+            delta_t_min=st.slider("Mindest-Spreizung Delta T (K)", 1.0, 10.0, th_defaults.delta_t_min, 0.5),
+            fbh_limit=st.slider("FBH-Auslegungsgrenze Vorlauf (°C)", 30.0, 50.0, th_defaults.fbh_limit, 1.0),
+            heat_avoid_share=st.slider("Vermeidbarer Wärmeanteil oberhalb Heizgrenze", 0.0, 1.0, th_defaults.heat_avoid_share, 0.05),
+            rlt_night_hours=st.slider("RLT-Nachtabsenkung (Stunden/Nacht)", 0.0, 12.0, th_defaults.rlt_night_hours, 1.0),
+            rlt_night_reduction=st.slider("Ventilatorstrom-Reduktion in der Nacht", 0.0, 1.0, th_defaults.rlt_night_reduction, 0.05),
+            heat_price=st.number_input("Wärmepreis (€/kWh)", 0.0, 1.0, th_defaults.heat_price, 0.01),
+            power_price=st.number_input("Strompreis (€/kWh)", 0.0, 2.0, th_defaults.power_price, 0.01),
+        )
+
 
 @st.cache_data(show_spinner="Lese Messdaten ein...")
 def _load(file_bytes: bytes):
@@ -93,10 +110,12 @@ def _load(file_bytes: bytes):
 
 
 @st.cache_data(show_spinner="Führe Datenprüfung durch und erstelle Abbildungen...")
-def _build(file_bytes: bytes, year: int, month: int, resample_rule: str | None, anomalies: bool):
+def _build(file_bytes: bytes, year: int, month: int, resample_rule: str | None, anomalies: bool,
+           th: Thresholds, strict: bool):
     df, load_seconds = _load(file_bytes)
     report = build_report(df, carpet_year=year, carpet_month=month,
-                          display_resample=resample_rule, show_anomalies=anomalies)
+                          display_resample=resample_rule, show_anomalies=anomalies,
+                          thresholds=th, strict_rules=strict)
     report.timings = {"Einlesen": load_seconds, **report.timings}
     return report
 
@@ -113,7 +132,7 @@ if input_bytes is None:
 
 try:
     report = _build(input_bytes, int(carpet_year), int(carpet_month),
-                    RESAMPLE_MAP[resample_label], settings.show_anomalies)
+                    RESAMPLE_MAP[resample_label], settings.show_anomalies, thresholds, settings.strict_rules)
 except ValueError as e:
     st.error(str(e))
     st.stop()
@@ -157,6 +176,8 @@ active_narrative = llm_result.blocks if (llm_result is not None and narrative_so
 tab_names = ["🔍 Datenprüfung", "📈 Abbildungen", "🧠 Auswertung"]
 if settings.show_comparison:
     tab_names.append("⚖️ Vergleich")
+if settings.show_explorer:
+    tab_names.append("🔎 Explorer")
 tab_names.append("⬇️ Export")
 tabs = dict(zip(tab_names, st.tabs(tab_names)))
 
@@ -219,6 +240,21 @@ with tabs["🧠 Auswertung"]:
             if titles:
                 st.caption("Bezug: " + ", ".join(titles))
 
+    if settings.show_savings and report.savings is not None:
+        st.divider()
+        st.subheader("💡 Energieeinsparpotenzial")
+        sv = report.savings
+        total_row = sv[sv["Maßnahme"] == "Summe"].iloc[0]
+        s1, s2, s3 = st.columns(3)
+        s1.metric("Einsparung gesamt", f"{total_row['Einsparung kWh/a']:,.0f} kWh/a".replace(",", "."))
+        s2.metric("Kosten", f"{total_row['Kosten €/a']:,.0f} €/a".replace(",", "."))
+        s3.metric("Anteil am Gesamtverbrauch", f"{total_row['Anteil %']:.1f} %",
+                  f"{total_row['Anteil %'] - 10:+.1f} %-Punkte zum 10-%-Ziel", delta_color="off")
+        st.dataframe(sv, use_container_width=True, hide_index=True)
+        st.caption("Bezug: gemessene Wärme (Zähler 019) und Ventilatorstrom (Zähler 021/022). Weitere Potenziale "
+                   "(Pumpenabschaltung, Spreizung, Geb.08) sind mit den vorhandenen Daten nicht beziffert. "
+                   "Annahmen im Einstellungsmenü unter „Schwellenwerte & Annahmen“ anpassbar.")
+
 if settings.show_comparison:
     with tabs["⚖️ Vergleich"]:
         st.subheader("Vergleich manuelle Auswertung ↔ Agent (Kap. 8)")
@@ -232,6 +268,20 @@ if settings.show_comparison:
         m3.metric("Nur manuell auffällig", summary["nur manuell auffällig"])
         m4.metric("Manuelle Befunde vom Agent gefunden",
                   f"{(compare_findings([b.heading for b in report.narrative])['Vom Agent gefunden'] == 'ja').sum()} von 5")
+
+        st.markdown("**Regelsatz v1 gegen v2 (Kap. 8.2.3 Optimierung)**")
+        rows = []
+        for name, strict in (("v1 (Standard)", False), ("v2 (erweitert)", True)):
+            sm = agreement_summary(compare_table1(quality_to_dataframe(
+                run_data_quality(df_full, strict=strict, fbh_limit=thresholds.fbh_limit))))
+            rows.append({"Regelsatz": name, "Übereinstimmung %": sm["Übereinstimmung %"],
+                         "Trefferquote %": sm["Trefferquote % (manuelle Auffälligkeiten vom Agent gefunden)"],
+                         "Genauigkeit %": sm["Genauigkeit % (Agent-Auffälligkeiten auch manuell auffällig)"],
+                         "nur Agent": sm["nur Agent auffällig"], "nur manuell": sm["nur manuell auffällig"]})
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.caption("Trefferquote: Anteil der manuell gefundenen Auffälligkeiten, die der Agent auch findet. "
+                   "Genauigkeit: Anteil der Agent-Auffälligkeiten, die auch manuell auffällig waren. "
+                   "v2 aktivieren: Einstellungsmenü → „Erweiterte Prüfregeln (v2)“.")
 
         st.markdown("**Datenprüfung Spalte für Spalte**")
         only_diff = st.checkbox("Nur Abweichungen zeigen", value=True)
@@ -263,6 +313,48 @@ if settings.show_comparison:
             for b in llm_result.blocks:
                 right.markdown(f"**{b.heading}**\n\n{b.text}")
 
+if settings.show_explorer:
+    with tabs["🔎 Explorer"]:
+        st.subheader("Freie Auswahl")
+        names = [c.short for c in COLUMNS]
+        kind = st.radio("Diagrammtyp", ["Liniendiagramm", "Streudiagramm (x/y)", "Carpetplot"], horizontal=True)
+        d_min, d_max = df_full.index.min().date(), df_full.index.max().date()
+        if kind != "Carpetplot":
+            rng = st.date_input("Zeitraum", value=(d_min, d_max), min_value=d_min, max_value=d_max)
+            start, end = (rng if isinstance(rng, tuple) and len(rng) == 2 else (d_min, d_max))
+            sub = df_full.loc[str(start):str(end)]
+        if kind == "Liniendiagramm":
+            picked = st.multiselect("Spalten (gleiche Einheit wählen)", names, default=names[1:3])
+            res = st.selectbox("Auflösung", list(RESAMPLE_MAP), index=1, key="exp_res")
+            if picked:
+                view = sub[picked].resample(RESAMPLE_MAP[res]).mean() if RESAMPLE_MAP[res] else sub[picked]
+                units = {c.unit for c in COLUMNS if c.short in picked}
+                if len(units) > 1:
+                    st.warning("Verschiedene Einheiten gewählt: " + ", ".join(sorted(units)) +
+                               ". Besser getrennt darstellen (keine Sekundärachsen).")
+                st.plotly_chart(fx.fig_zone_comparison(view, [(n, n) for n in picked], "Freie Auswahl",
+                                                       unit=", ".join(sorted(units))), use_container_width=True)
+            else:
+                st.info("Bitte mindestens eine Spalte wählen.")
+        elif kind == "Streudiagramm (x/y)":
+            cx, cy = st.columns(2)
+            x_col = cx.selectbox("x-Achse", names, index=names.index("RLT KL01 Außenluft"))
+            y_col = cy.selectbox("y-Achse", names, index=names.index("Stat. Heizung Geb.06 VL (Ist)"))
+            st.plotly_chart(fx.fig_heating_curve(sub, x_col, y_col, f"{y_col} vs. {x_col}", x_label=x_col, y_label=y_col),
+                            use_container_width=True)
+        else:
+            cc, cy_, cm = st.columns(3)
+            col = cc.selectbox("Spalte", names, index=1)
+            year = cy_.number_input("Jahr", 2020, 2035, int(df_full.index.min().year) + 1, key="exp_year")
+            month = cm.number_input("Monat", 1, 12, 2, key="exp_month")
+            series = df_full[col].dropna()
+            lo, hi = float(series.quantile(0.01)), float(series.quantile(0.99))
+            zr = st.slider("Farbskala fix (Kap. 5.2: feste Betriebsgrenzen)", float(series.min()), float(series.max()),
+                           (lo, hi))
+            unit = next(c.unit for c in COLUMNS if c.short == col)
+            st.plotly_chart(fx.fig_carpet(df_full, col, int(year), int(month), f"{col} {int(month):02d}/{int(year)}",
+                                          zmin=zr[0], zmax=zr[1], unit=unit), use_container_width=True)
+
 with tabs["⬇️ Export"]:
     st.subheader("Bericht exportieren")
     export_report = dataclasses.replace(report, narrative=active_narrative)
@@ -290,7 +382,8 @@ with tabs["⬇️ Export"]:
                     buf = io.BytesIO()
                     cmp_df = compare_table1(report.quality_df) if settings.show_comparison else None
                     st.session_state["docx_warnings"] = export_docx(
-                        export_report, buf, narrative=active_narrative, comparison=cmp_df)
+                        export_report, buf, narrative=active_narrative, comparison=cmp_df,
+                        include_savings=settings.show_savings)
                     st.session_state["docx_bytes"] = buf.getvalue()
             for w in st.session_state.get("docx_warnings", []):
                 st.warning(w)

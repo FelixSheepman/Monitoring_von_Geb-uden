@@ -55,7 +55,7 @@ def _figure_png(fig) -> bytes | None:
         return None
 
 
-def export_docx(report, path_or_buffer, narrative=None, comparison=None, title="Monitoringbericht",
+def export_docx(report, path_or_buffer, narrative=None, comparison=None, include_savings: bool = True, title="Monitoringbericht",
                 subtitle="Automatisierte Auswertung durch den KI-Agenten") -> list[str]:
     """Schreibt den Bericht. `narrative`: Liste von NarrativeBlock (Default: regelbasiert aus report).
     `comparison`: optional (Tabelle1-Vergleich als DataFrame). Gibt Warnungen zurueck (z.B. fehlende Bilder)."""
@@ -119,10 +119,23 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, title="
             r = p.add_run("Bezug: " + ", ".join(refs))
             r.italic, r.font.size = True, Pt(9)
 
-    if comparison is not None and len(comparison):
-        doc.add_heading("4 Vergleich manuelle Auswertung / Agent", 1)
+    next_no = 4
+    if getattr(report, "savings", None) is not None and include_savings:
+        doc.add_heading(f"{next_no} Energieeinsparpotenzial", 1)
+        doc.add_paragraph(
+            "Grobe Abschätzung auf Basis der gemessenen Verbräuche. Die Annahmen sind in der Tabelle genannt "
+            "und im Einstellungsmenü der App anpassbar."
+        )
         cap = doc.add_paragraph()
-        cap.add_run("Tabelle 2: Gegenüberstellung der Datenprüfung").bold = True
+        cap.add_run("Tabelle 2: Einsparpotenzial").bold = True
+        _table(doc, report.savings[["Maßnahme", "Annahme", "Einsparung kWh/a", "Kosten €/a", "Anteil %"]],
+               [3.6, 6.2, 2.4, 2.0, 1.6])
+        next_no += 1
+
+    if comparison is not None and len(comparison):
+        doc.add_heading(f"{next_no} Vergleich manuelle Auswertung / Agent", 1)
+        cap = doc.add_paragraph()
+        cap.add_run("Tabelle 3: Gegenüberstellung der Datenprüfung").bold = True
         cmp_df = comparison[["Spalte", "Manuell", "Agent", "Ergebnis", "Manueller_Befund", "Agent_Befund"]]
         _table(doc, cmp_df, [1.0, 1.8, 1.8, 2.6, 4.2, 4.2], status_col="Ergebnis", font_pt=7)
 

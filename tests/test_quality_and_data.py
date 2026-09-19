@@ -149,3 +149,53 @@ def test_llm_agent_uses_only_computed_facts_and_fallback_for_opus(report):
 def test_llm_agent_refusal_raises():
     with pytest.raises(RuntimeError):
         generate_narrative("{}", _FakeClient("[]", stop_reason="refusal"), "claude-sonnet-5")
+
+
+# --- Erweiterungen: Regelsatz v2, Extras, Schwellenwerte ---
+
+from monitoring_agent.extras import availability_daily, pump_runtime_monthly, savings_potential
+from monitoring_agent.settings import Thresholds
+
+
+@needs_data
+def test_strict_rules_find_all_manual_findings(df):
+    v1 = agreement_summary(compare_table1(quality_to_dataframe(run_data_quality(df))))
+    v2 = agreement_summary(compare_table1(quality_to_dataframe(run_data_quality(df, strict=True))))
+    key = "Trefferquote % (manuelle Auffälligkeiten vom Agent gefunden)"
+    assert v2[key] == 100.0 and v2[key] > v1[key]
+    assert v2["nur manuell auffällig"] == 0
+
+
+@needs_data
+def test_pumps_run_in_winter_and_mostly_off_in_summer(df):
+    monthly = pump_runtime_monthly(df)
+    share = monthly.div(monthly.index.days_in_month * 24, axis=0)
+    winter = share[share.index.month.isin([12, 1, 2])]
+    summer = share[share.index.month.isin([7])]
+    assert (winter > 0.95).all().all()
+    assert (summer < 0.5).all().all()
+
+
+@needs_data
+def test_pump_narrative_matches_data_not_a_fixed_claim(report):
+    block = [b for b in report.narrative if b.figure_keys == ["pumpenlaufzeit"]][0]
+    assert "Sommerabschaltung" in block.heading and "ganzjährig" not in block.heading
+
+
+@needs_data
+def test_savings_scale_with_assumptions(df):
+    base = savings_potential(df, Thresholds())
+    doubled = savings_potential(df, Thresholds(rlt_night_hours=16.0))
+    assert doubled.loc[1, "Einsparung kWh/a"] == pytest.approx(2 * base.loc[1, "Einsparung kWh/a"], rel=0.01)
+    assert base.loc[base["Maßnahme"] == "Summe", "Anteil %"].iloc[0] < 10
+
+
+@needs_data
+def test_availability_counts_known_zero_dropouts(df):
+    assert availability_daily(df)["FBH Geb.06 VL (Ist)"].sum() >= 3
+
+
+@needs_data
+def test_delta_t_threshold_changes_narrative(df):
+    strict = [b for b in build_report(df, thresholds=Thresholds(delta_t_min=5.0)).narrative if "spreizung" in b.heading][0]
+    assert "über 5 Kelvin" in strict.text

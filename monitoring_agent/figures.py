@@ -76,7 +76,8 @@ def fig_soll_ist(df: pd.DataFrame, soll_col: str, ist_col: str, title: str, unit
     return fig
 
 
-def fig_heating_curve(df: pd.DataFrame, aul_col: str, vl_col: str, title: str) -> go.Figure:
+def fig_heating_curve(df: pd.DataFrame, aul_col: str, vl_col: str, title: str,
+                       x_label: str = "Außentemperatur (°C)", y_label: str = "Vorlauftemperatur (°C)") -> go.Figure:
     """Abbildung 4: Heizkurve - Streudiagramm mit Regressionslinie (unverbundene
     Punktwolke, Trendlinie ueber lineare Regression)."""
     sub = df[[aul_col, vl_col]].dropna()
@@ -94,13 +95,13 @@ def fig_heating_curve(df: pd.DataFrame, aul_col: str, vl_col: str, title: str) -
             x=x_line, y=y_line, mode="lines", name="Regressionslinie",
             line=dict(color=COLOR_SOLL, width=2.5),
         ))
-    fig.update_layout(**_base_layout(title, "Vorlauftemperatur (°C)", "Außentemperatur (°C)"))
+    fig.update_layout(**_base_layout(title, y_label, x_label))
     fig.update_layout(hovermode="closest")
     return fig
 
 
 def fig_carpet(df: pd.DataFrame, value_col: str, year: int, month: int, title: str,
-               zmin: float | None = None, zmax: float | None = None) -> go.Figure:
+               zmin: float | None = None, zmax: float | None = None, unit: str = "°C") -> go.Figure:
     """Abbildung 5 / 6: Carpetplot als farbcodierte Heatmap.
     Spalten = Kalendertag, Zeilen = Uhrzeit (15-Min-Raster), siehe Kap. 5.2.
     Farbskala fix auf reale Betriebsgrenzen (kein Auto-Scaling)."""
@@ -113,8 +114,8 @@ def fig_carpet(df: pd.DataFrame, value_col: str, year: int, month: int, title: s
     fig = go.Figure(go.Heatmap(
         z=pivot.values, x=pivot.columns, y=pivot.index,
         colorscale="RdYlBu_r", zmin=zmin, zmax=zmax,
-        colorbar=dict(title="°C"),
-        hovertemplate="Tag %{x}<br>%{y} Uhr<br>%{z:.1f} °C<extra></extra>",
+        colorbar=dict(title=unit),
+        hovertemplate="Tag %{x}<br>%{y} Uhr<br>%{z:.1f} " + unit + "<extra></extra>",
     ))
     fig.update_layout(**_base_layout(title, "Uhrzeit", "Tag im Monat"))
     fig.update_layout(hovermode="closest", legend=None)
@@ -189,4 +190,27 @@ def add_anomaly_markers(fig: go.Figure, x, y, name: str, color: str = "#C00000")
         marker=dict(color=color, size=7, symbol="diamond", line=dict(color="white", width=1)),
         hovertemplate=f"{name}<br>%{{x}}<br>%{{y:.1f}}<extra></extra>",
     ))
+    return fig
+
+
+def fig_pump_runtime(monthly: pd.DataFrame, title: str) -> go.Figure:
+    """Abbildung 13: Monatliche Laufzeit der Heizkreispumpen in Stunden."""
+    fig = go.Figure()
+    for label, color in zip(monthly.columns, ZONE_PALETTE):
+        fig.add_trace(go.Bar(x=monthly.index, y=monthly[label], name=label, marker_color=color))
+    fig.update_layout(**_base_layout(title, "Laufzeit (h/Monat)", "Monat"))
+    fig.update_layout(barmode="group")
+    return fig
+
+
+def fig_availability(avail: pd.DataFrame, title: str) -> go.Figure:
+    """Abbildung 14: Datenverfuegbarkeit je Spalte und Tag (Anzahl fehlerhafter Zeitschritte)."""
+    fig = go.Figure(go.Heatmap(
+        z=avail.T.values, x=avail.index, y=avail.columns, colorscale="Reds", zmin=0,
+        zmax=max(3, float(avail.values.max())),
+        colorbar=dict(title="Fehler/Tag"),
+        hovertemplate="%{y}<br>%{x|%d.%m.%Y}<br>%{z:.0f} fehlerhafte Zeitschritte<extra></extra>",
+    ))
+    fig.update_layout(**_base_layout(title, "", "Datum"))
+    fig.update_layout(hovermode="closest", legend=None, height=560, margin=dict(l=230, r=30, t=70, b=50))
     return fig

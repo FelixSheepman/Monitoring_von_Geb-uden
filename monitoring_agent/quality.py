@@ -138,7 +138,30 @@ def _check_setpoint(df: pd.DataFrame, zone: str, roles: dict) -> list[Finding]:
     return findings
 
 
-def run_data_quality(df: pd.DataFrame) -> list[ColumnQuality]:
+def _strict_checks(df: pd.DataFrame, col, zone_roles: dict, fbh_limit: float) -> list[Finding]:
+    """Regelsatz v2: zusaetzliche Regeln, abgeleitet aus dem Vergleich mit der manuellen Pruefung (Kap. 8.2.3)."""
+    findings: list[Finding] = []
+    series = df[col.short].dropna()
+    if series.empty:
+        return findings
+    if col.role == "zul" and series.max() > 30:
+        findings.append(Finding("auffaellig", f"Hohes Maximum der Zulufttemperatur ({series.max():.1f} °C)"))
+    is_fbh = col.zone.startswith("fbh")
+    if is_fbh and col.role == "vl" and series.max() > fbh_limit + 5:
+        findings.append(Finding("auffaellig", f"Max-Vorlauf {series.max():.1f} °C für ein Niedertemperatursystem sehr hoch"))
+    if is_fbh and col.role == "rl" and series.max() > fbh_limit:
+        findings.append(Finding("auffaellig", f"Sehr hohe Rücklauftemperatur (Max {series.max():.1f} °C)"))
+    if col.role == "rl":
+        vl = zone_roles.get("vl")
+        if vl is not None:
+            both = df[[vl.short, col.short]].dropna()
+            frac = (both[col.short] > both[vl.short]).mean() if len(both) else 0
+            if frac > 0.01:
+                findings.append(Finding("auffaellig", f"Rücklauf über dem Vorlauf in {frac*100:.1f}% der Zeitschritte (Widerspruch im Datenpaar)"))
+    return findings
+
+
+def run_data_quality(df: pd.DataFrame, strict: bool = False, fbh_limit: float = 40.0) -> list[ColumnQuality]:
     results: list[ColumnQuality] = []
     zone_roles = {}
     for c in COLUMNS:
@@ -154,6 +177,8 @@ def run_data_quality(df: pd.DataFrame) -> list[ColumnQuality]:
             findings += _check_vl_rl_pair(df, col.zone, zone_roles[col.zone])
         if col.role == "soll_vl":
             findings += _check_setpoint(df, col.zone, zone_roles[col.zone])
+        if strict:
+            findings += _strict_checks(df, col, zone_roles[col.zone], fbh_limit)
 
         results.append(ColumnQuality(
             column_id=i,

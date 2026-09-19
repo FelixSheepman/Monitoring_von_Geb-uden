@@ -43,7 +43,12 @@ def agreement_summary(table1_cmp: pd.DataFrame) -> dict[str, float]:
     n = len(table1_cmp)
     counts = table1_cmp["Ergebnis"].value_counts()
     agree = int(counts.get("übereinstimmend", 0))
+    manual_flag = int((table1_cmp["Manuell"] == "Auffällig").sum())
+    agent_flag = int((table1_cmp["Agent"] == "Auffällig").sum())
+    both = int(((table1_cmp["Manuell"] == "Auffällig") & (table1_cmp["Agent"] == "Auffällig")).sum())
     return {
+        "Trefferquote % (manuelle Auffälligkeiten vom Agent gefunden)": round(both / manual_flag * 100, 1) if manual_flag else float("nan"),
+        "Genauigkeit % (Agent-Auffälligkeiten auch manuell auffällig)": round(both / agent_flag * 100, 1) if agent_flag else float("nan"),
         "Spalten gesamt": n,
         "übereinstimmend": agree,
         "Übereinstimmung %": round(agree / n * 100, 1) if n else float("nan"),

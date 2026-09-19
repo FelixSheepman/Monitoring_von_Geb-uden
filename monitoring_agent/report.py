@@ -15,8 +15,10 @@ import pandas as pd
 from . import anomalies as an
 from . import figures as fx
 from .metrics import daily_consumption
+from .extras import availability_daily, pump_runtime_monthly, savings_potential
 from .narrative import NarrativeBlock, build_narrative
 from .quality import quality_to_dataframe, run_data_quality
+from .settings import Thresholds
 
 
 @dataclass
@@ -33,6 +35,7 @@ class Report:
     quality_df: pd.DataFrame
     figures: list[FigureEntry] = field(default_factory=list)
     narrative: list[NarrativeBlock] = field(default_factory=list)
+    savings: pd.DataFrame | None = None
     timings: dict[str, float] = field(default_factory=dict)
     anomaly_counts: dict[str, int] = field(default_factory=dict)
     carpet_year: int = 2025
@@ -40,15 +43,17 @@ class Report:
 
 
 def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 2,
-                  display_resample: str | None = None, show_anomalies: bool = False) -> Report:
+                  display_resample: str | None = None, show_anomalies: bool = False,
+                  thresholds: Thresholds | None = None, strict_rules: bool = False) -> Report:
     """`df` ist immer die volle Rohauflösung und wird für Datenprüfung, Carpetplots
     und Tagesverbrauchsberechnungen verwendet (Glätten würde dort Aussetzer/Resets
     verdecken bzw. die Tagesdifferenz-Logik verfälschen). `display_resample`
     (z.B. "h" oder "D") glättet ausschließlich die reinen Zeitverlaufs-Liniendiagramme
     für eine ruhigere Darstellung."""
+    th = thresholds or Thresholds()
     timings: dict[str, float] = {}
     t0 = time.perf_counter()
-    quality_results = run_data_quality(df)
+    quality_results = run_data_quality(df, strict=strict_rules, fbh_limit=th.fbh_limit)
     quality_df = quality_to_dataframe(quality_results)
     timings["Datenprüfung"] = time.perf_counter() - t0
 
@@ -143,19 +148,31 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
         "Absoluter, täglich aufsummierter Wärmeverbrauch der gesamten Anlage.",
     ))
 
-    anomaly_counts = _apply_anomalies(df, figs) if show_anomalies else {}
+    figs.append(FigureEntry(
+        "pumpenlaufzeit", "Laufzeit der Heizkreispumpen (Monatswerte)",
+        fx.fig_pump_runtime(pump_runtime_monthly(df), "Laufzeit der Heizkreispumpen (Monatswerte)"),
+        "Monatliche Betriebsstunden der Heizkreispumpen; 720 h entsprechen Dauerbetrieb.",
+    ))
+    figs.append(FigureEntry(
+        "verfuegbarkeit", "Datenverfügbarkeit je Sensor und Tag",
+        fx.fig_availability(availability_daily(df), "Datenverfügbarkeit je Sensor und Tag"),
+        "Anzahl fehlender oder auf 0 stehender Zeitschritte (von 96 je Tag) je Spalte und Kalendertag.",
+    ))
+
+    anomaly_counts = _apply_anomalies(df, figs, th) if show_anomalies else {}
     timings["Grafiken"] = time.perf_counter() - t0
 
     t0 = time.perf_counter()
-    narrative = build_narrative(df)
+    narrative = build_narrative(df, th)
+    savings = savings_potential(df, th)
     timings["Auswertungstext"] = time.perf_counter() - t0
 
     return Report(df=df, quality_df=quality_df, figures=figs, narrative=narrative,
-                  timings=timings, anomaly_counts=anomaly_counts,
+                  timings=timings, anomaly_counts=anomaly_counts, savings=savings,
                   carpet_year=carpet_year, carpet_month=carpet_month)
 
 
-def _apply_anomalies(df: pd.DataFrame, figs: list[FigureEntry]) -> dict[str, int]:
+def _apply_anomalies(df: pd.DataFrame, figs: list[FigureEntry], th: Thresholds) -> dict[str, int]:
     by_key = {f.key: f.figure for f in figs}
     counts: dict[str, int] = {}
 
@@ -178,9 +195,9 @@ def _apply_anomalies(df: pd.DataFrame, figs: list[FigureEntry]) -> dict[str, int
     n_low = 0
     for vl, rl, label in [("Stat. Heizung Geb.06 VL (Ist)", "Stat. Heizung Geb.06 RL", "Stat. Heizung"),
                           ("FBH Geb.06 VL (Ist)", "FBH Geb.06 RL", "FBH")]:
-        idx = an.low_delta_t(df, vl, rl)
+        idx = an.low_delta_t(df, vl, rl, th.aktiv_schwelle_vl, th.delta_t_min)
         n_low += len(idx)
         fx.add_anomaly_markers(by_key["delta_t"], idx.index, (df[vl] - df[rl]).loc[idx.index],
-                                f"Delta T < 2 K ({label})", color="#7F0000")
-    counts["Delta T < 2 K bei aktivem Betrieb"] = n_low
+                                f"Delta T < {th.delta_t_min:g} K ({label})", color="#7F0000")
+    counts[f"Delta T < {th.delta_t_min:g} K bei aktivem Betrieb"] = n_low
     return counts

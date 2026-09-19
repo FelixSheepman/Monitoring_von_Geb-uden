@@ -52,6 +52,11 @@ output/                 Generierte Reports (lokal, nicht Teil der Abgabe)
 | Regelbasierte Auswertung | Datengestützte Texte im Stil Kap. 6.4 |
 | Vergleichsansicht | Manuelle Auswertung (`reference/*.csv`) vs. Agent |
 | LLM-Auswertung | Claude formuliert die Auswertung aus den berechneten Kennzahlen |
+| Erweiterte Prüfregeln (v2) | Zusatzregeln, im Vergleich gegen v1 mit Trefferquote/Genauigkeit |
+| Pumpenlaufzeiten, Datenverfügbarkeit | Zwei zusätzliche Abbildungen (13, 14) und ein Auswertungstext |
+| Energieeinsparpotenzial | Abschätzung mit einstellbaren Annahmen gegenüber dem 10-%-Ziel |
+| Explorer | Freie Diagramme (Linie, Streu, Carpetplot) mit Zeitraumfilter |
+| Schwellenwerte | Heizgrenze, Delta T, FBH-Grenze, Preise u. a. per Regler |
 | Word-/Excel-Export | Formatierter Bericht bzw. Arbeitsmappe |
 
 ## LLM-Auswertung einrichten

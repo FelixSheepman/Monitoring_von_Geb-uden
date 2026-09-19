@@ -23,6 +23,7 @@ FALLBACK_MODELS = {"claude-opus-5"}
 FIGURE_KEYS = [
     "wmz_kumuliert", "regelguete_stat_heizung", "heizkurve", "carpet_rlt_vl", "carpet_rlt_rl",
     "regelguete_fbh", "zonenvergleich", "delta_t", "rlt_aul_zul", "strom_rlt_taeglich", "waerme_taeglich",
+    "pumpenlaufzeit", "verfuegbarkeit",
 ]
 
 SYSTEM_PROMPT = """Du bist Ingenieur für Technisches Monitoring und Energieoptimierung von Nichtwohngebäuden \
