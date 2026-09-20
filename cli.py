@@ -30,6 +30,7 @@ def main() -> int:
     parser.add_argument("--output", "-o", default="monitoring_report.xlsx",
                          help="Pfad der erzeugten Report-.xlsx (Default: monitoring_report.xlsx)")
     parser.add_argument("--docx", help="Optional: zusätzlich einen Word-Bericht (.docx) erzeugen")
+    parser.add_argument("--html", help="Optional: zusätzlich einen eigenständigen HTML-Bericht erzeugen (ohne Installation lesbar)")
     parser.add_argument("--anomalies", action="store_true", help="Anomalien in den Diagrammen markieren")
     parser.add_argument("--exclude-invalid", action="store_true",
                          help="Eindeutig fehlerhafte Werte (Nullwerte, Werte außerhalb des Bereichs, Zähler-Rücksprünge) "
@@ -50,7 +51,7 @@ def main() -> int:
     print("Führe Datenprüfung durch und erstelle Abbildungen...")
     excluded = clear_only(find_invalid(df)) if args.exclude_invalid else None
     report = build_report(df, carpet_year=args.carpet_year, carpet_month=args.carpet_month,
-                          show_anomalies=args.anomalies, excluded=excluded)
+                          show_anomalies=args.anomalies, excluded=excluded, display_resample="h")
     if args.exclude_invalid:
         print(f"  {report.exclusion_log.n_values} fehlerhafte Werte in {report.exclusion_log.n_columns} Spalten ausgeschlossen")
 
@@ -65,6 +66,11 @@ def main() -> int:
         for w in export_docx(report, args.docx, comparison=compare_table1(report.quality_df)):
             print("  Hinweis:", w)
         print(f"Word-Bericht: {args.docx}")
+    if args.html:
+        from monitoring_agent.comparison import compare_table1
+        from monitoring_agent.html_export import export_html
+        export_html(report, args.html, comparison=compare_table1(report.quality_df))
+        print(f"HTML-Bericht: {args.html}")
     print("Laufzeit: " + ", ".join(f"{k} {v:.2f}s" for k, v in report.timings.items()))
     print("Fertig.")
     return 0

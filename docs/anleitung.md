@@ -226,6 +226,8 @@ Im Juli liegt die Vorlauftemperatur bei etwa 22 bis 29 °C, also nahe der Raumte
 2. Tab **⬇️ Export**, Knopf **Word-Bericht erzeugen**. Das Rendern der Abbildungen dauert etwa 30 Sekunden.
 3. Auf **monitoring_bericht.docx** klicken.
 
+**HTML-Bericht zum Verschicken:** Im Tab **⬇️ Export** erzeugt **HTML-Bericht erzeugen** eine einzige Datei mit demselben Inhalt wie der Word-Bericht. Sie öffnet sich per Doppelklick in jedem Browser, ohne Python und ohne Internet, und die Diagramme bleiben interaktiv. Das ist der einfachste Weg, Ergebnisse an Betreuer zu schicken.
+
 **Aufbau des Berichts** (in Anlehnung an Kapitel 6 der Hausarbeit): 1 Einleitung und Datengrundlage, 2 Datenprüfung (mit Messdatenkopf als Abbildung 1), 3 Grafische Aufbereitung und Auswertung (jeder Text steht direkt unter seiner Abbildung, Nummerierung wie in der Arbeit), 4 Energieeinsparpotenzial, 5 Bewertung der Ergebnisse, 6 Zusammenfassung und Empfehlungen (mit Theorie-Praxis-Abgleich), 7 Vergleich mit der manuellen Auswertung.
 
 Wenn statt der Diagramme der Hinweis „Abbildung konnte nicht gerendert werden“ steht, fehlt dem Server ein Browser für das Bildrendern (siehe 8). Die **Excel-Arbeitsmappe** ist die Alternative: Sie enthält die Datenprüfung und alle Diagramme als bearbeitbare Excel-Diagramme.
@@ -362,6 +364,7 @@ Für wiederkehrende Auswertungen, zum Beispiel jeden Monat mit neuen Daten:
 | `--output` | Excel-Arbeitsmappe (Standard: `monitoring_report.xlsx`) |
 | `--docx` | Zusätzlich einen Word-Bericht erzeugen |
 | `--anomalies` | Anomalien in den Diagrammen markieren |
+| `--html` | Zusätzlich einen HTML-Bericht erzeugen: eine einzelne Datei, die sich ohne Installation im Browser öffnen lässt |
 | `--exclude-invalid` | Eindeutig fehlerhafte Werte von der Auswertung ausschließen (siehe 6.12); das Protokoll steht im Excel-Blatt „Ausgeschlossene Werte“ |
 | `--carpet-year`, `--carpet-month` | Zeitraum der Carpetplots (Standard: Februar 2025) |
 

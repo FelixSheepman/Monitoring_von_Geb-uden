@@ -1,0 +1,65 @@
+KI-Agent für das Technische Monitoring
+=======================================
+Projektarbeit "Verwendung von KI-Agenten im Monitoring" (FH Münster)
+
+Das Programm automatisiert die Auswertung aus Kapitel 6: Datenprüfung, Abbildungen,
+Auswertungstexte, Bewertung, Einsparpotenzial und Berichtserstellung. Grundlage sind die
+mitgelieferten Messdaten (Messdaten 2024-2026.xlsx). Eigene Messdaten im selben Format
+lassen sich in der App hochladen.
+
+Es gibt drei Wege, sich das Ergebnis anzusehen. Der erste braucht keine Installation.
+
+
+1) Beispielbericht ansehen (ohne Installation, ohne Internet)
+-------------------------------------------------------------
+Datei "Beispielbericht.html" per Doppelklick im Browser öffnen. Der Bericht enthält
+Datenprüfung, alle Abbildungen mit Auswertung, Einsparpotenzial, Bewertung und den Vergleich
+mit der manuellen Auswertung. Die Diagramme sind interaktiv (Zoom, Hover, Legende).
+
+
+2) Die App auf dem eigenen Rechner starten (Windows)
+----------------------------------------------------
+Voraussetzung: Python 3.10 oder neuer (https://www.python.org/downloads/, beim Installieren
+"Add python.exe to PATH" ankreuzen).
+
+  a) Die ZIP-Datei entpacken (nicht aus dem ZIP heraus starten).
+  b) "App-starten.bat" doppelklicken.
+  c) Beim ersten Start werden die Pakete einmalig installiert (Internet nötig, ca. 2 bis 5
+     Minuten). Danach öffnet sich der Browser mit der App. Ab dem zweiten Start dauert es
+     wenige Sekunden.
+  d) Zum Beenden das schwarze Fenster schließen.
+
+In der App: Oben stehen die Tabs Datenprüfung, Abbildungen, Auswertung, Bewertung, Vergleich,
+Vorgehen, Forschung, Explorer und Export. Eine ausführliche Anleitung mit Beispielen steht im
+Tab "Anleitung" und in der Datei docs/anleitung.md. Der Tab "Funktionsweise" zeigt den Ablaufplan.
+Im Tab "Export" lassen sich Excel-Arbeitsmappe, Word-Bericht und HTML-Bericht erzeugen.
+(Für Bilder im Word-Bericht wird Google Chrome oder Chromium benötigt.)
+
+
+3) Die App online nutzen
+------------------------
+https://monitoringvongebaeudenfhmuensterprojektarbeit.streamlit.app/
+Die App schläft bei Inaktivität ein. Falls eine Meldung erscheint, auf "Yes, get this app
+back up!" klicken und etwa eine Minute warten.
+
+
+Ohne Oberfläche (Kommandozeile)
+-------------------------------
+  .venv\Scripts\python.exe cli.py --input "source_docs\Messdaten 2024-2026.xlsx" --output bericht.xlsx --docx bericht.docx --html bericht.html
+
+Tests: .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+       .venv\Scripts\python.exe -m pytest
+
+Ordner
+------
+  app.py, cli.py     Web-App und Kommandozeile
+  monitoring_agent/  gemeinsame Kernlogik
+  reference/         Referenzwerte der manuellen Auswertung und Kontrollkriterien (CSV, änderbar)
+  docs/              Anleitung, Ablaufplan
+  tests/             automatische Tests
+  source_docs/       Messdaten
+
+Hinweis zur Einordnung: Der Agent arbeitet regelbasiert; alle Zahlen im Text werden aus den
+Daten berechnet. Ein Sprachmodell (Claude) ist optional zuschaltbar und wird für diese Version
+nicht benötigt. Grenzwerte der Kontrollkriterien, Forschungsfragen und Ausblick sind Entwürfe,
+das Einsparpotenzial beruht auf Annahmen (im Tab "Schwellenwerte" einstellbar).

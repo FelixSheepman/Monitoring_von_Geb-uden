@@ -24,6 +24,7 @@ from monitoring_agent.comparison import agreement_summary, compare_findings, com
 from monitoring_agent.data_loader import load_measurements, read_manual_minmax
 from monitoring_agent.exclusion import CLEAR_RULES, clear_only, find_invalid
 from monitoring_agent.excel_export import export_workbook
+from monitoring_agent.html_export import export_html
 from monitoring_agent.extras import savings_explanations
 from monitoring_agent.llm_agent import MODELS, build_facts, generate_narrative, make_client
 from monitoring_agent import figures as fx
@@ -205,7 +206,7 @@ except ValueError as e:
 
 # Bereits erzeugte Exporte passen nach einer geänderten Auswahl nicht mehr zu den Daten.
 if st.session_state.get("_export_signature") != (file_hash, excluded):
-    for stale in ("xlsx_bytes", "docx_bytes", "docx_warnings"):
+    for stale in ("xlsx_bytes", "docx_bytes", "docx_warnings", "html_bytes"):
         st.session_state.pop(stale, None)
     st.session_state["_export_signature"] = (file_hash, excluded)
 
@@ -540,6 +541,20 @@ with tabs["⬇️ Export"]:
     st.subheader("Bericht exportieren")
     export_report = dataclasses.replace(report, narrative=active_narrative)
     st.caption(f"Auswertungstext im Export: {narrative_source}")
+
+    st.markdown("**HTML-Bericht** – eine einzige Datei, per Doppelklick im Browser lesbar, ohne Installation. "
+                "Zum Verschicken an Betreuer geeignet; die Diagramme bleiben interaktiv.")
+    if st.button("HTML-Bericht erzeugen"):
+        with st.spinner("Erzeuge HTML-Bericht..."):
+            buf = io.BytesIO()
+            cmp_html = compare_table1(report.quality_df) if settings.show_comparison else None
+            export_html(export_report, buf, narrative=active_narrative, comparison=cmp_html,
+                        include_savings=settings.show_savings, include_assessment=settings.show_assessment)
+            st.session_state["html_bytes"] = buf.getvalue()
+    if "html_bytes" in st.session_state:
+        st.download_button("📥 monitoring_bericht.html", st.session_state["html_bytes"],
+                           file_name="monitoring_bericht.html", mime="text/html")
+    st.divider()
 
     left, right = st.columns(2)
     with left:
