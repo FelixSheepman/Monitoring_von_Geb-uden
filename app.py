@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from monitoring_agent.comparison import agreement_summary, compare_findings, compare_table1
 from monitoring_agent.data_loader import load_measurements, read_manual_minmax
@@ -228,6 +229,7 @@ if settings.show_research:
 if settings.show_explorer:
     tab_names.append("🔎 Explorer")
 tab_names.append("⬇️ Export")
+tab_names.append("🗺️ Funktionsweise")
 tab_names.append("📖 Anleitung")
 tabs = dict(zip(tab_names, st.tabs(tab_names)))
 
@@ -423,6 +425,13 @@ if settings.show_explorer:
             unit = next(c.unit for c in COLUMNS if c.short == col)
             st.plotly_chart(fx.fig_carpet(df_full, col, int(year), int(month), f"{col} {int(month):02d}/{int(year)}",
                                           zmin=zr[0], zmax=zr[1], unit=unit), width="stretch")
+
+with tabs["🗺️ Funktionsweise"]:
+    plan_path = Path("docs/ablaufplan.html")
+    if plan_path.exists():
+        components.html(plan_path.read_text(encoding="utf-8"), height=3300, scrolling=True)
+    else:
+        st.warning("Ablaufplan nicht gefunden (docs/ablaufplan.html).")
 
 with tabs["📖 Anleitung"]:
     render_guide()

@@ -1,0 +1,402 @@
+<meta charset="utf-8">
+<title>Ablaufplan KI-Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #F3F5F7; --surface: #FFFFFF; --surface2: #E8EDF1; --ink: #16212B; --muted: #566677; --line: #C5D0D9;
+    --you: #C4501C; --claude: #1F5DAE; --code: #217867; --slate: #4A5A69; --loop: #A8324E;
+    --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E151C; --surface: #16202A; --surface2: #1F2C38; --ink: #E7EDF2; --muted: #9DADBB; --line: #2D3C49;
+      --you: #F08A5D; --claude: #78AAEB; --code: #5FC2AB; --slate: #A6B5C2; --loop: #F07C99;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E151C; --surface: #16202A; --surface2: #1F2C38; --ink: #E7EDF2; --muted: #9DADBB; --line: #2D3C49;
+    --you: #F08A5D; --claude: #78AAEB; --code: #5FC2AB; --slate: #A6B5C2; --loop: #F07C99;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.55 var(--sans); }
+  .wrap { max-width: 1060px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 56px; }
+  .eyebrow { font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+  h1 { font: 600 34px/1.15 var(--sans); margin: 0 0 14px; text-wrap: balance; letter-spacing: -.01em; }
+  h2 { font: 600 22px/1.25 var(--sans); margin: 0 0 6px; text-wrap: balance; }
+  .lead { max-width: 68ch; margin: 0; color: var(--ink); }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px 26px; margin: 26px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line); }
+  .facts div { display: flex; align-items: baseline; gap: 8px; }
+  .facts dt { font: 600 20px var(--sans); font-variant-numeric: tabular-nums; margin: 0; }
+  .facts dd { margin: 0; color: var(--muted); font-size: 13px; }
+  section { margin-top: 52px; }
+  .sub { color: var(--muted); max-width: 70ch; margin: 0 0 18px; }
+  figure { margin: 0; }
+  .scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+  .scroll svg { display: block; width: 100%; min-width: 880px; height: auto; }
+  figcaption { margin-top: 10px; color: var(--muted); font-size: 13.5px; max-width: 78ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .legend i { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--ink); }
+  .legend i.dash { border-top-style: dashed; }
+  .legend b { display: inline-block; width: 12px; height: 12px; border-radius: 2px; border: 2px solid; }
+  .notes { margin: 16px 0 0; padding-left: 20px; max-width: 74ch; }
+  .notes li { margin-bottom: 6px; }
+  .verdict { display: flex; gap: 14px; align-items: baseline; margin: 6px 0 18px; padding: 14px 16px; border-left: 4px solid var(--claude); background: var(--surface); border-radius: 0 6px 6px 0; }
+  .verdict strong { font-size: 18px; white-space: nowrap; }
+  .verdict span { color: var(--muted); }
+  .tablewrap { overflow-x: auto; margin-top: 22px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; background: var(--surface); }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 500 11.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface2); }
+  tr.grp td { font: 600 12px var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--ink); background: var(--bg); padding-top: 14px; }
+  td.no { font-weight: 600; white-space: nowrap; }
+  .why { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; margin-top: 22px; }
+  .why h3 { font: 600 15px var(--sans); margin: 0 0 6px; }
+  .why p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  /* Diagramme */
+  svg text { font-family: var(--sans); fill: var(--ink); }
+  .bt { font-size: 11.5px; font-weight: 500; text-anchor: middle; }
+  .bm { font-family: var(--mono); font-size: 10.5px; text-anchor: middle; fill: var(--muted); }
+  .ll { font-size: 12.5px; font-weight: 600; text-anchor: middle; }
+  .al { font-size: 10.5px; fill: var(--muted); }
+  .hd { font-size: 12px; font-weight: 600; }
+  .box { fill: var(--surface); stroke-width: 1.6; }
+  .dash { stroke-dasharray: 5 4; }
+  .s-you { stroke: var(--you); } .s-claude { stroke: var(--claude); } .s-code { stroke: var(--code); } .s-slate { stroke: var(--slate); }
+  .f-you { fill: var(--you) !important; } .f-claude { fill: var(--claude) !important; } .f-code { fill: var(--code) !important; } .f-slate { fill: var(--slate) !important; }
+  .lane-you { fill: var(--you); } .lane-claude { fill: var(--claude); } .lane-code { fill: var(--code); } .lane-slate { fill: var(--slate); }
+  .ar { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+  .ar-loop { fill: none; stroke: var(--loop); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .ar-mute { fill: none; stroke: var(--muted); stroke-width: 1.3; stroke-dasharray: 5 4; }
+  .mk-ink { fill: var(--ink); } .mk-loop { fill: var(--loop); } .mk-mute { fill: var(--muted); }
+  .chip { fill: var(--surface2); stroke: var(--line); stroke-width: 1; }
+  .bus { fill: var(--surface2); stroke: var(--line); stroke-width: 1; }
+  @media (max-width: 560px) { h1 { font-size: 27px; } .verdict { flex-direction: column; gap: 4px; } }
+</style>
+
+<main class="wrap">
+  <header>
+    <p class="eyebrow">Technisches Monitoring · Studienarbeit · Stand 20.09.2026</p>
+    <h1>So arbeitet der KI-Agent</h1>
+    <p class="lead">Drei Zeichnungen zeigen, wie Claude Code dieses Projekt Schritt für Schritt umgesetzt hat, wie das entstandene Tool aufgebaut ist und wo Subagenten eingesetzt wurden. Kurz vorweg: in keinem Schritt.</p>
+    <dl class="facts">
+      <div><dt>18</dt><dd>Python-Module</dd></div>
+      <div><dt>≈ 3.400</dt><dd>Zeilen Code</dd></div>
+      <div><dt>40</dt><dd>automatische Tests</dd></div>
+      <div><dt>5</dt><dd>Zwischenschritte</dd></div>
+      <div><dt>18</dt><dd>Kontrollkriterien</dd></div>
+      <div><dt>8</dt><dd>Commits (7 von Claude, 1 von euch)</dd></div>
+    </dl>
+  </header>
+
+  <!-- ============================== 1: Arbeitsweise ============================== -->
+  <section aria-labelledby="h-arbeit">
+    <h2 id="h-arbeit">Arbeitsweise: wer macht was</h2>
+    <p class="sub">Vier Bahnen zeigen, wer in welchem Schritt handelt. Bei Entscheidungen, die euch gehören, halte ich an und frage.</p>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 560" role="img" aria-label="Schwimmbahn-Diagramm: Ihr gebt Auftrag und Unterlagen, Claude liest, fragt bei Entscheidungen nach, schreibt Code, führt ihn auf dem Rechner aus und testet, prüft die Zahlen, pusht nach GitHub, die Cloud-App aktualisiert sich und ihr gebt Rückmeldung.">
+          <defs>
+            <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-ink" d="M0 0 L10 5 L0 10 z"/></marker>
+            <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-loop" d="M0 0 L10 5 L0 10 z"/></marker>
+            <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-mute" d="M0 0 L10 5 L0 10 z"/></marker>
+          </defs>
+
+          <!-- Bahnen -->
+          <rect class="lane-you" fill-opacity=".07" x="0" y="34" width="1000" height="130"/>
+          <rect class="lane-claude" fill-opacity=".07" x="0" y="164" width="1000" height="130"/>
+          <rect class="lane-code" fill-opacity=".07" x="0" y="294" width="1000" height="130"/>
+          <rect class="lane-slate" fill-opacity=".07" x="0" y="424" width="1000" height="130"/>
+          <rect class="lane-you" fill-opacity=".2" x="0" y="34" width="100" height="130"/>
+          <rect class="lane-claude" fill-opacity=".2" x="0" y="164" width="100" height="130"/>
+          <rect class="lane-code" fill-opacity=".2" x="0" y="294" width="100" height="130"/>
+          <rect class="lane-slate" fill-opacity=".2" x="0" y="424" width="100" height="130"/>
+          <text class="ll f-you" x="50" y="103">Ihr</text>
+          <text class="ll f-claude" x="50" y="229">Claude</text><text class="ll f-claude" x="50" y="245">(ich)</text>
+          <text class="ll f-code" x="50" y="355">Rechner</text><text class="ll f-code" x="50" y="371">Werkzeuge</text>
+          <text class="ll f-slate" x="50" y="485">GitHub</text><text class="ll f-slate" x="50" y="501">Cloud</text>
+
+          <!-- Pfeile -->
+          <polyline class="ar" marker-end="url(#a1)" points="187,128 187,229 263,229"/>
+          <polyline class="ar" marker-end="url(#a1)" points="311,258 311,330"/>
+          <text class="al" x="321" y="298">liest</text>
+          <polyline class="ar" marker-end="url(#a1)" points="359,229 387,229"/>
+          <polyline class="ar" marker-start="url(#a1)" marker-end="url(#a1)" points="435,200 435,128"/>
+          <text class="al" x="445" y="150">Frage / Antwort</text>
+          <polyline class="ar" marker-end="url(#a1)" points="483,229 511,229"/>
+          <polyline class="ar" marker-end="url(#a1)" points="607,229 683,229 683,330"/>
+          <text class="al" x="645" y="222" text-anchor="middle">ausführen</text>
+          <polyline class="ar-mute" marker-end="url(#a3)" points="559,330 559,258"/>
+          <text class="al" x="569" y="298">bei Bedarf</text>
+          <polyline class="ar" marker-end="url(#a1)" points="731,359 745,359 745,229 759,229"/>
+          <text class="al" x="753" y="324">Ergebnis</text>
+          <polyline class="ar-loop" marker-end="url(#a2)" points="807,200 807,184 559,184 559,200"/>
+          <text class="al" x="683" y="178" text-anchor="middle" style="fill: var(--loop)">Fehler oder Abweichung: korrigieren</text>
+          <polyline class="ar" marker-end="url(#a1)" points="807,258 807,460"/>
+          <text class="al" x="817" y="412">veröffentlichen</text>
+          <polyline class="ar" marker-end="url(#a1)" points="855,489 883,489"/>
+          <polyline class="ar" marker-end="url(#a1)" points="931,460 931,128"/>
+          <text class="al" x="921" y="330" text-anchor="end">öffnet die App</text>
+          <polyline class="ar-mute" marker-end="url(#a3)" points="931,70 931,52 187,52 187,70"/>
+          <text class="al" x="560" y="46" text-anchor="middle">nächster Auftrag oder Korrektur von euch</text>
+
+          <!-- Schritte -->
+          <rect class="box s-you" x="139" y="70" width="96" height="58" rx="5"/>
+          <text class="bt" x="187" y="96">Auftrag und</text><text class="bt" x="187" y="112">Unterlagen</text>
+
+          <rect class="box s-claude" x="263" y="200" width="96" height="58" rx="5"/>
+          <text class="bt" x="311" y="226">Dateien lesen</text><text class="bt" x="311" y="242">und verstehen</text>
+          <rect class="box s-code" x="263" y="330" width="96" height="58" rx="5"/>
+          <text class="bt" x="311" y="356">Word, Excel</text><text class="bt" x="311" y="372">einlesen</text>
+
+          <rect class="box s-you" x="387" y="70" width="96" height="58" rx="5"/>
+          <text class="bt" x="435" y="96">Ihr wählt</text><text class="bt" x="435" y="112">eine Option</text>
+          <rect class="box s-claude" x="387" y="200" width="96" height="58" rx="5"/>
+          <text class="bt" x="435" y="226">Rückfrage bei</text><text class="bt" x="435" y="242">Entscheidung</text>
+
+          <rect class="box s-claude" x="511" y="200" width="96" height="58" rx="5"/>
+          <text class="bt" x="559" y="226">Code und Text</text><text class="bt" x="559" y="242">schreiben</text>
+          <rect class="box s-code dash" x="511" y="330" width="96" height="58" rx="5"/>
+          <text class="bt" x="559" y="356">Skills laden</text><text class="bt" x="559" y="372">(Anleitungen)</text>
+
+          <rect class="box s-code" x="635" y="330" width="96" height="58" rx="5"/>
+          <text class="bt" x="683" y="356">Ausführen,</text><text class="bt" x="683" y="372">Tests, Browser</text>
+
+          <rect class="box s-claude" x="759" y="200" width="96" height="58" rx="5"/>
+          <text class="bt" x="807" y="226">Prüfen: Zahlen</text><text class="bt" x="807" y="242">gegen Daten</text>
+
+          <rect class="box s-slate" x="759" y="460" width="96" height="58" rx="5"/>
+          <text class="bt" x="807" y="486">Commit und</text><text class="bt" x="807" y="502">Push</text>
+          <rect class="box s-slate" x="883" y="460" width="96" height="58" rx="5"/>
+          <text class="bt" x="931" y="486">Cloud-App</text><text class="bt" x="931" y="502">aktualisiert sich</text>
+
+          <rect class="box s-you" x="883" y="70" width="96" height="58" rx="5"/>
+          <text class="bt" x="931" y="96">Ihr prüft und</text><text class="bt" x="931" y="112">gebt Feedback</text>
+        </svg>
+      </div>
+      <figcaption>Ein Auftrag durchläuft die Bahnen von links nach rechts. Der rote Rücksprung ist der wichtigste Teil: Weichen die Zahlen von den Daten ab oder scheitert ein Test, wird vor dem Veröffentlichen korrigiert.</figcaption>
+    </figure>
+    <ul class="legend">
+      <li><i></i> Ablauf</li>
+      <li><i class="dash"></i> Bei Bedarf, Rücksprung oder Rückmeldung</li>
+      <li><b style="border-color: var(--you)"></b> Ihr</li>
+      <li><b style="border-color: var(--claude)"></b> Claude</li>
+      <li><b style="border-color: var(--code)"></b> Rechner und Werkzeuge</li>
+      <li><b style="border-color: var(--slate)"></b> GitHub und Cloud</li>
+    </ul>
+    <ul class="notes">
+      <li>Bei echten Entscheidungen, etwa Werkzeugwahl oder Ablageort, stelle ich Auswahlfragen. Reine Umsetzungsschritte führe ich ohne Rückfrage aus.</li>
+      <li>Vor jedem Push laufen alle Tests. Neue Zahlen prüfe ich gegen die Messdaten, nicht gegen meine Erwartung.</li>
+      <li>API-Schlüssel und Zugangsdaten gebe ich nie in Dateien oder Commits.</li>
+    </ul>
+  </section>
+
+  <!-- ============================== 2: Aufbau ============================== -->
+  <section aria-labelledby="h-aufbau">
+    <h2 id="h-aufbau">Aufbau des Tools</h2>
+    <p class="sub">Die fünf Zwischenschritte aus eurer Vorgehensweise sind fünf Bausteine. Alle lesen dieselben Rohdaten und schreiben in ein gemeinsames Ergebnis.</p>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 560" role="img" aria-label="Aufbauplan: Excel-Messdaten werden eingelesen, fünf Bausteine (Datenprüfung, Grafikerstellung, Auswertung, Bewertung, Berichtserstellung) lesen die Rohdaten und füllen ein gemeinsames Ergebnis, aus dem Web-App, Word, Excel und Kommandozeile entstehen. Rechts vergleichen Kontrollkriterien das Ergebnis mit der manuellen Referenz. Claude ist optional für die Textformulierung.">
+          <defs>
+            <marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-ink" d="M0 0 L10 5 L0 10 z"/></marker>
+            <marker id="b3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-mute" d="M0 0 L10 5 L0 10 z"/></marker>
+          </defs>
+
+          <!-- Eingang -->
+          <rect class="box s-you" x="20" y="20" width="200" height="46" rx="5"/>
+          <text class="bt" x="120" y="40">Excel-Messdaten</text><text class="bm" x="120" y="56">23 Spalten · 15 Minuten</text>
+          <polyline class="ar" marker-end="url(#b1)" points="220,43 250,43"/>
+          <rect class="box s-code" x="250" y="20" width="220" height="46" rx="5"/>
+          <text class="bt" x="360" y="40">Einlesen und Zuordnen</text><text class="bm" x="360" y="56">data_loader · config</text>
+          <polyline class="ar" marker-end="url(#b1)" points="360,66 360,104"/>
+
+          <!-- Bus -->
+          <rect class="bus" x="20" y="104" width="700" height="20" rx="3"/>
+          <text class="bm" x="370" y="118">Rohdaten im Speicher: 58.125 Zeitschritte × 23 Spalten</text>
+
+          <!-- Pfeile Bus zu Bausteinen -->
+          <polyline class="ar" marker-end="url(#b1)" points="84,124 84,160"/>
+          <polyline class="ar" marker-end="url(#b1)" points="227,124 227,160"/>
+          <polyline class="ar" marker-end="url(#b1)" points="370,124 370,160"/>
+          <polyline class="ar" marker-end="url(#b1)" points="513,124 513,160"/>
+          <polyline class="ar" marker-end="url(#b1)" points="656,124 656,160"/>
+
+          <!-- Bausteine -->
+          <rect class="box s-claude" x="20" y="160" width="128" height="130" rx="5"/>
+          <text class="hd" x="30" y="179">1  Datenprüfung</text>
+          <text class="bm" x="84" y="203">quality · extras</text>
+          <text class="bt" x="84" y="226">Tabelle 1</text><text class="bt" x="84" y="244">Datenabdeckung</text><text class="bt" x="84" y="262">Anomalien</text>
+
+          <rect class="box s-claude" x="163" y="160" width="128" height="130" rx="5"/>
+          <text class="hd" x="173" y="179">2  Grafik</text>
+          <text class="bm" x="227" y="203">figures · report</text>
+          <text class="bt" x="227" y="226">13 Diagramme</text><text class="bt" x="227" y="244">Carpetplots</text><text class="bt" x="227" y="262">feste Farbskala</text>
+
+          <rect class="box s-claude" x="306" y="160" width="128" height="130" rx="5"/>
+          <text class="hd" x="316" y="179">3  Auswertung</text>
+          <text class="bm" x="370" y="203">narrative · extras</text>
+          <text class="bt" x="370" y="226">6 Texte</text><text class="bt" x="370" y="244">Kennzahlen</text><text class="bt" x="370" y="262">Einsparpotenzial</text>
+
+          <rect class="box s-claude" x="449" y="160" width="128" height="130" rx="5"/>
+          <text class="hd" x="459" y="179">4  Bewertung</text>
+          <text class="bm" x="513" y="203">assessment</text>
+          <text class="bt" x="513" y="226">Schweregrad</text><text class="bt" x="513" y="244">Einstufungsregel</text><text class="bt" x="513" y="262">Empfehlungen</text>
+
+          <rect class="box s-claude" x="592" y="160" width="128" height="130" rx="5"/>
+          <text class="hd" x="602" y="179">5  Bericht</text>
+          <text class="bm" x="656" y="203">word_export · ui</text>
+          <text class="bt" x="656" y="226">Gliederung Kap. 6</text><text class="bt" x="656" y="244">Abbildungsnummern</text><text class="bt" x="656" y="262">Kapitel-8-Entwurf</text>
+
+          <polyline class="ar" marker-end="url(#b1)" points="148,225 163,225"/>
+          <polyline class="ar" marker-end="url(#b1)" points="291,225 306,225"/>
+          <polyline class="ar" marker-end="url(#b1)" points="434,225 449,225"/>
+          <polyline class="ar" marker-end="url(#b1)" points="577,225 592,225"/>
+
+          <!-- Ergebnis-Objekt -->
+          <polyline class="ar" marker-end="url(#b1)" points="84,290 84,330"/>
+          <polyline class="ar" marker-end="url(#b1)" points="227,290 227,330"/>
+          <polyline class="ar" marker-end="url(#b1)" points="370,290 370,330"/>
+          <polyline class="ar" marker-end="url(#b1)" points="513,290 513,330"/>
+          <polyline class="ar" marker-end="url(#b1)" points="656,290 656,330"/>
+          <rect class="bus" x="20" y="330" width="700" height="36" rx="3"/>
+          <text class="bt" x="370" y="352">Ein gemeinsames Ergebnis (report.py): Tabellen, Abbildungen, Texte, Bewertung, Einsparung</text>
+
+          <!-- Ausgaben -->
+          <polyline class="ar" marker-end="url(#b1)" points="100,366 100,410"/>
+          <polyline class="ar" marker-end="url(#b1)" points="280,366 280,410"/>
+          <polyline class="ar" marker-end="url(#b1)" points="460,366 460,410"/>
+          <polyline class="ar" marker-end="url(#b1)" points="640,366 640,410"/>
+          <rect class="box s-code" x="20" y="410" width="160" height="80" rx="5"/>
+          <text class="bt" x="100" y="442">Web-App</text><text class="bm" x="100" y="460">Streamlit · 11 Tabs</text><text class="bm" x="100" y="476">Schalter im Menü</text>
+          <rect class="box s-code" x="200" y="410" width="160" height="80" rx="5"/>
+          <text class="bt" x="280" y="442">Word</text><text class="bm" x="280" y="460">Bericht</text><text class="bm" x="280" y="476">Kapitel-8-Entwurf</text>
+          <rect class="box s-code" x="380" y="410" width="160" height="80" rx="5"/>
+          <text class="bt" x="460" y="442">Excel</text><text class="bm" x="460" y="460">Arbeitsmappe</text><text class="bm" x="460" y="476">editierbare Diagramme</text>
+          <rect class="box s-code" x="560" y="410" width="160" height="80" rx="5"/>
+          <text class="bt" x="640" y="442">Kommandozeile</text><text class="bm" x="640" y="460">cli.py</text><text class="bm" x="640" y="476">ohne Oberfläche</text>
+
+          <!-- Claude optional -->
+          <rect class="box s-claude dash" x="760" y="20" width="220" height="86" rx="5"/>
+          <text class="bt" x="870" y="44">Claude-API (optional)</text>
+          <text class="bm" x="870" y="64">standardmäßig aus</text>
+          <text class="bm" x="870" y="80">formuliert nur den Text,</text>
+          <text class="bm" x="870" y="94">rechnet nichts</text>
+          <polyline class="ar-loop" style="stroke: var(--claude)" marker-end="url(#b3)" points="760,63 740,63 740,142 410,142 410,160"/>
+          <text class="al" x="585" y="137" text-anchor="middle">nur Text</text>
+
+          <!-- Kontrolle -->
+          <rect class="box s-you" x="760" y="160" width="220" height="66" rx="5"/>
+          <text class="bt" x="870" y="184">Manuelle Referenz</text><text class="bm" x="870" y="202">reference/*.csv</text><text class="bm" x="870" y="216">Excel-Auswertung der Gruppe</text>
+          <polyline class="ar" marker-end="url(#b1)" points="870,226 870,256"/>
+          <rect class="box s-claude" x="760" y="256" width="220" height="80" rx="5"/>
+          <text class="bt" x="870" y="282">Kontrollkriterien</text><text class="bm" x="870" y="300">process.py · 18 Kriterien</text><text class="bm" x="870" y="316">Referenzvergleich + Eigenprüfung</text>
+          <polyline class="ar" marker-end="url(#b1)" points="720,348 740,348 740,296 760,296"/>
+          <polyline class="ar" marker-end="url(#b1)" points="870,336 870,366"/>
+          <rect class="box s-you" x="760" y="366" width="220" height="66" rx="5"/>
+          <text class="bt" x="870" y="392">Vergleich Kapitel 8</text><text class="bm" x="870" y="410">Forschungsfragen (Kap. 9)</text><text class="bm" x="870" y="424">Diskussion schreibt ihr</text>
+          <rect class="box s-code" x="760" y="462" width="220" height="56" rx="5"/>
+          <text class="bt" x="870" y="488">Tests</text><text class="bm" x="870" y="506">40 automatische Prüfungen</text>
+        </svg>
+      </div>
+      <figcaption>Links läuft die Produktion von den Rohdaten bis zu den Ausgaben. Rechts prüfen die Kontrollkriterien das Ergebnis gegen eure manuelle Auswertung. Der Vergleich ist damit ein eingebauter Teil des Tools und keine spätere Handarbeit.</figcaption>
+    </figure>
+    <ul class="legend">
+      <li><i></i> Datenfluss</li>
+      <li><i class="dash"></i> Optional, nur mit Schalter und API-Schlüssel</li>
+      <li><b style="border-color: var(--claude)"></b> Bausteine der Zwischenschritte</li>
+      <li><b style="border-color: var(--code)"></b> Ausgaben und Tests</li>
+      <li><b style="border-color: var(--you)"></b> Eure Daten und Entscheidungen</li>
+    </ul>
+    <ul class="notes">
+      <li>Das Tool ist im Kern <strong>regelbasiert</strong>: Jede Aussage folgt einer nachvollziehbaren Regel im Code, gleiche Daten ergeben gleiche Ergebnisse.</li>
+      <li>Das Sprachmodell ist eine <strong>zusätzliche Variante</strong> für die Textformulierung. Es bekommt nur berechnete Kennzahlen und darf keine Zahlen erfinden.</li>
+    </ul>
+  </section>
+
+  <!-- ============================== 3: Subagenten ============================== -->
+  <section aria-labelledby="h-sub">
+    <h2 id="h-sub">Subagenten: nicht im Einsatz</h2>
+    <div class="verdict"><strong>Ergebnis: nein</strong><span>Alle Schritte hat ein einziger Agent nacheinander selbst ausgeführt, sowohl beim Bauen als auch im fertigen Tool.</span></div>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 250" role="img" aria-label="Ein einziger Agent, Claude Code, nutzt acht Werkzeuge und arbeitet direkt mit euch. Drei mögliche Subagenten für Code-Review, Codesuche und Zweitprüfung wurden nicht eingesetzt.">
+          <defs>
+            <marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-ink" d="M0 0 L10 5 L0 10 z"/></marker>
+            <marker id="c3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="mk-mute" d="M0 0 L10 5 L0 10 z"/></marker>
+          </defs>
+          <rect class="box s-you" x="20" y="95" width="120" height="60" rx="5"/>
+          <text class="bt" x="80" y="130">Ihr</text>
+          <polyline class="ar" marker-end="url(#c1)" points="140,112 250,112"/>
+          <text class="al" x="195" y="104" text-anchor="middle">Auftrag, Antworten</text>
+          <polyline class="ar" marker-end="url(#c1)" points="250,138 140,138"/>
+          <text class="al" x="195" y="156" text-anchor="middle">Ergebnis, Fragen</text>
+
+          <rect class="box s-claude" x="250" y="30" width="400" height="190" rx="6" style="stroke-width: 2.2"/>
+          <text class="hd" x="450" y="56" text-anchor="middle">Claude Code: ein einziger Agent</text>
+          <text class="al" x="450" y="73" text-anchor="middle">arbeitet alle Schritte selbst und nacheinander</text>
+          <rect class="chip" x="260" y="90" width="86" height="30" rx="4"/><text class="bm" x="303" y="109">Lesen</text>
+          <rect class="chip" x="358" y="90" width="86" height="30" rx="4"/><text class="bm" x="401" y="109">Suchen</text>
+          <rect class="chip" x="456" y="90" width="86" height="30" rx="4"/><text class="bm" x="499" y="109">Schreiben</text>
+          <rect class="chip" x="554" y="90" width="86" height="30" rx="4"/><text class="bm" x="597" y="109">Bearbeiten</text>
+          <rect class="chip" x="260" y="132" width="86" height="30" rx="4"/><text class="bm" x="303" y="151">Python/Bash</text>
+          <rect class="chip" x="358" y="132" width="86" height="30" rx="4"/><text class="bm" x="401" y="151">Browser-Test</text>
+          <rect class="chip" x="456" y="132" width="86" height="30" rx="4"/><text class="bm" x="499" y="151">Rückfragen</text>
+          <rect class="chip" x="554" y="132" width="86" height="30" rx="4"/><text class="bm" x="597" y="151">Skills</text>
+          <text class="al" x="450" y="194" text-anchor="middle">einzelne Werkzeuge liefen teils parallel,</text>
+          <text class="al" x="450" y="208" text-anchor="middle">das ist aber kein Subagent</text>
+
+          <polyline class="ar-mute" marker-end="url(#c3)" points="650,120 725,120"/>
+          <text class="al" x="688" y="111" text-anchor="middle">nicht genutzt</text>
+          <polyline class="ar-mute" points="725,55 725,185"/>
+          <polyline class="ar-mute" marker-end="url(#c3)" points="725,55 760,55"/>
+          <polyline class="ar-mute" marker-end="url(#c3)" points="725,120 760,120"/>
+          <polyline class="ar-mute" marker-end="url(#c3)" points="725,185 760,185"/>
+          <rect class="box s-slate dash" x="760" y="30" width="220" height="50" rx="5"/>
+          <text class="bm" x="870" y="52" style="fill: var(--ink)">Subagent: Code-Review</text><text class="bm" x="870" y="68">nicht eingesetzt</text>
+          <rect class="box s-slate dash" x="760" y="95" width="220" height="50" rx="5"/>
+          <text class="bm" x="870" y="117" style="fill: var(--ink)">Subagent: Codesuche</text><text class="bm" x="870" y="133">nicht eingesetzt</text>
+          <rect class="box s-slate dash" x="760" y="160" width="220" height="50" rx="5"/>
+          <text class="bm" x="870" y="182" style="fill: var(--ink)">Subagent: Zweitprüfung</text><text class="bm" x="870" y="198">nicht eingesetzt</text>
+        </svg>
+      </div>
+      <figcaption>Durchgezogen ist, was im Einsatz war. Gestrichelt sind Einsatzmöglichkeiten für Subagenten, die ich hier nicht genutzt habe.</figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Prozessschritt</th><th>Wer arbeitet</th><th>Subagent</th></tr></thead>
+        <tbody>
+          <tr class="grp"><td colspan="3">Beim Bauen des Projekts</td></tr>
+          <tr><td>Word- und Excel-Unterlagen lesen</td><td>Ich selbst, mit Lese- und Bash-Werkzeugen</td><td class="no">nein</td></tr>
+          <tr><td>Rückfragen und Planung</td><td>Ich selbst, mit Auswahlfragen an euch</td><td class="no">nein</td></tr>
+          <tr><td>Code schreiben: Prüfung, Grafiken, App, Word-Export</td><td>Ich selbst, Baustein für Baustein</td><td class="no">nein</td></tr>
+          <tr><td>Testen und App im Browser prüfen</td><td>Ich selbst, mit Bash und Browser-Werkzeug</td><td class="no">nein</td></tr>
+          <tr><td>Commit und Push nach GitHub</td><td>Ich selbst, mit git</td><td class="no">nein</td></tr>
+          <tr class="grp"><td colspan="3">Im fertigen Tool</td></tr>
+          <tr><td>Die fünf Zwischenschritte (Prüfung bis Bericht)</td><td>Gewöhnliche Python-Funktionen in fester Reihenfolge</td><td class="no">nein</td></tr>
+          <tr><td>Textformulierung mit Claude (optional, ausgeschaltet)</td><td>Ein einzelner API-Aufruf, kein Zusammenspiel mehrerer Agenten</td><td class="no">nein</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="why">
+      <div>
+        <h3>Warum keine Subagenten</h3>
+        <p>Die Schritte bauen aufeinander auf und brauchen denselben Kontext: Datenlayout, eure Entscheidungen, bisherige Ergebnisse. Ein einziger Agent behält diesen Kontext und ist günstiger und konsistenter.</p>
+      </div>
+      <div>
+        <h3>Wo sie sinnvoll wären</h3>
+        <p>Für ein unabhängiges Code-Review, eine breite Suche in einem großen Projekt oder eine zweite, unabhängige Prüfung der Kennzahlen. Das habe ich hier nicht genutzt.</p>
+      </div>
+      <div>
+        <h3>Was das für die Arbeit heißt</h3>
+        <p>„KI-Agent“ meint hier einen Agenten mit Werkzeugen und Rückkopplung beim Bauen, im Tool selbst aber eine regelbasierte Pipeline mit optionalem Sprachmodell. Einen Agenten-Verbund gibt es nicht.</p>
+      </div>
+    </div>
+  </section>
+</main>

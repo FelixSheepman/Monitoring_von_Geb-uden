@@ -193,3 +193,10 @@ def test_criteria_do_not_depend_on_anomaly_markers(df):
                               assessment=with_markers.assessment)).set_index("ID")
     for id_ in ("GR1", "GR2", "GR3", "GR4"):
         assert c.loc[id_, "Status"] == STATUS_OK, (id_, c.loc[id_, "Detail"])
+
+
+def test_flow_chart_page_states_subagent_usage():
+    page = (Path(__file__).resolve().parent.parent / "docs" / "ablaufplan.html").read_text(encoding="utf-8")
+    assert "Subagenten: nicht im Einsatz" in page and "Ergebnis: nein" in page
+    for step in ("Datenprüfung", "Grafik", "Auswertung", "Bewertung", "Bericht"):
+        assert step in page
