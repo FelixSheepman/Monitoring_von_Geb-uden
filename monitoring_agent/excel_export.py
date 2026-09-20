@@ -53,6 +53,38 @@ def _write_quality_sheet(wb: xlsxwriter.Workbook, quality_df: pd.DataFrame) -> N
     ws.freeze_panes(1, 0)
 
 
+def _write_exclusion_sheet(wb: xlsxwriter.Workbook, log) -> None:
+    """Blatt mit den nicht beruecksichtigten Werten: oben die Zusammenfassung, darunter jeder Einzelwert."""
+    ws = wb.add_worksheet("Ausgeschlossene Werte")
+    header_fmt = wb.add_format(HEADER_FMT)
+    wrap_fmt = wb.add_format({"text_wrap": True, "valign": "top"})
+    time_fmt = wb.add_format({"num_format": "dd.mm.yyyy hh:mm", "valign": "top"})
+    row = 0
+    for j, col in enumerate(log.summary.columns):
+        ws.write(row, j, col, header_fmt)
+    for _, r in log.summary.iterrows():
+        row += 1
+        for j, col in enumerate(log.summary.columns):
+            ws.write(row, j, r[col], wrap_fmt)
+    row += 2
+    ws.write(row, 0, "Einzelwerte", wb.add_format({"bold": True, "font_size": 12, "font_color": "#1F3864"}))
+    row += 1
+    first_detail = row
+    for j, col in enumerate(log.details.columns):
+        ws.write(row, j, col, header_fmt)
+    for _, r in log.details.iterrows():
+        row += 1
+        ws.write_datetime(row, 0, r["Zeitpunkt"].to_pydatetime(), time_fmt)
+        for j, col in enumerate(log.details.columns[1:], start=1):
+            ws.write(row, j, r[col], wrap_fmt)
+    ws.autofilter(first_detail, 0, row, len(log.details.columns) - 1)
+    ws.set_column(0, 0, 40)
+    ws.set_column(1, 1, 36)
+    ws.set_column(2, 3, 12)
+    ws.set_column(4, 5, 22)
+    ws.set_column(6, 6, 70)
+
+
 def _write_timeseries_chart(wb: xlsxwriter.Workbook, sheet_name: str, title: str,
                              x: pd.Index, series: dict[str, pd.Series], y_title: str,
                              chart_type: str = "line", x_title: str = "Zeit") -> None:
@@ -161,6 +193,8 @@ def export_workbook(report, path: str) -> None:
         _write_quality_sheet(wb, report.quality_df)
         if report.narrative:
             _write_narrative_sheet(wb, report.narrative)
+        if len(report.exclusion_log.summary):
+            _write_exclusion_sheet(wb, report.exclusion_log)
 
         hourly = df.resample("h").mean()
 

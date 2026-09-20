@@ -8,6 +8,7 @@ Start:
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import io
 import os
 import re
@@ -21,6 +22,7 @@ import streamlit.components.v1 as components
 
 from monitoring_agent.comparison import agreement_summary, compare_findings, compare_table1
 from monitoring_agent.data_loader import load_measurements, read_manual_minmax
+from monitoring_agent.exclusion import CLEAR_RULES, clear_only, find_invalid
 from monitoring_agent.excel_export import export_workbook
 from monitoring_agent.extras import savings_explanations
 from monitoring_agent.llm_agent import MODELS, build_facts, generate_narrative, make_client
@@ -148,11 +150,11 @@ def _manual_minmax(file_bytes: bytes):
 
 @st.cache_data(show_spinner="Führe Datenprüfung durch und erstelle Abbildungen...")
 def _build(file_bytes: bytes, year: int, month: int, resample_rule: str | None, anomalies: bool,
-           th: Thresholds, strict: bool):
+           th: Thresholds, strict: bool, excluded: frozenset):
     df, load_seconds = _load(file_bytes)
     report = build_report(df, carpet_year=year, carpet_month=month,
                           display_resample=resample_rule, show_anomalies=anomalies,
-                          thresholds=th, strict_rules=strict)
+                          thresholds=th, strict_rules=strict, excluded=excluded)
     report.timings = {"Einlesen": load_seconds, **report.timings}
     return report
 
@@ -169,12 +171,43 @@ if input_bytes is None:
         render_guide()
     st.stop()
 
+@st.cache_data(show_spinner=False)
+def _candidates(file_bytes: bytes) -> pd.DataFrame:
+    return find_invalid(_load(file_bytes)[0])
+
+
+MODE_KEEP = "Alle Werte behalten (wie bisher)"
+MODE_SELECT = "Nur ausgewählte Werte ausschließen"
+MODE_ALL = "Alle eindeutig fehlerhaften Werte ausschließen"
+
+
+def _current_exclusions(cands: pd.DataFrame, file_hash: str) -> frozenset:
+    """Liest die Auswahl aus dem Zustand der Widgets im Tab Datenprüfung (steht beim Rerun vor dem Zeichnen bereit)."""
+    mode = st.session_state.get("excl_mode", MODE_KEEP)
+    if mode == MODE_ALL:
+        return clear_only(cands)
+    if mode == MODE_SELECT:
+        edited = (st.session_state.get(f"excl_editor_{file_hash}") or {}).get("edited_rows", {})
+        rows = [cands.iloc[int(i)] for i, change in edited.items() if change.get("Ausschließen") and int(i) < len(cands)]
+        return frozenset((r["Spalte"], r["rule_key"]) for r in rows)
+    return frozenset()
+
+
+file_hash = hashlib.md5(input_bytes).hexdigest()[:10]
 try:
+    candidates = _candidates(input_bytes)
+    excluded = _current_exclusions(candidates, file_hash)
     report = _build(input_bytes, int(carpet_year), int(carpet_month),
-                    RESAMPLE_MAP[resample_label], settings.show_anomalies, thresholds, settings.strict_rules)
+                    RESAMPLE_MAP[resample_label], settings.show_anomalies, thresholds, settings.strict_rules, excluded)
 except ValueError as e:
     st.error(str(e))
     st.stop()
+
+# Bereits erzeugte Exporte passen nach einer geänderten Auswahl nicht mehr zu den Daten.
+if st.session_state.get("_export_signature") != (file_hash, excluded):
+    for stale in ("xlsx_bytes", "docx_bytes", "docx_warnings"):
+        st.session_state.pop(stale, None)
+    st.session_state["_export_signature"] = (file_hash, excluded)
 
 df_full = report.df
 n_auffaellig = int((report.quality_df["Plausibilität"] == "Auffällig!").sum())
@@ -249,6 +282,51 @@ with tabs["🔍 Datenprüfung"]:
     )
     render_data_extras(report)
 
+    st.divider()
+    st.subheader("Fehlerhafte Werte behandeln")
+    if candidates.empty:
+        st.success("Es wurden keine einzelnen fehlerhaften Werte erkannt, die sich ausschließen ließen.")
+    else:
+        clear = candidates[candidates["rule_key"].isin(CLEAR_RULES)]
+        pairs = candidates[~candidates["rule_key"].isin(CLEAR_RULES)]
+        n_clear = f"{int(clear['Anzahl'].sum()):,}".replace(",", ".")
+        st.markdown(
+            f"Die Prüfung hat **{n_clear}** eindeutig fehlerhafte Werte gefunden (Nullwert-Aussetzer, Werte außerhalb "
+            "des plausiblen Bereichs, Zähler-Rücksprünge). Ihr entscheidet, ob sie in die weitere Auswertung einfließen."
+        )
+        if len(pairs):
+            n_pairs = f"{int(pairs['Anzahl'].sum()):,}".replace(",", ".")
+            st.markdown(
+                f"Zusätzlich gibt es **{n_pairs}** Werte in Vor-/Rücklaufpaaren, bei denen der Rücklauf über dem Vorlauf "
+                "liegt. Das kann ein echter Messwert sein (z. B. Auskühlen bei stehender Pumpe). Sie werden deshalb nie "
+                "automatisch ausgeschlossen, sondern nur, wenn ihr sie unter „Nur ausgewählte Werte ausschließen“ "
+                "ausdrücklich abhakt."
+            )
+        mode = st.radio("Behandlung", [MODE_KEEP, MODE_SELECT, MODE_ALL], key="excl_mode",
+                        help="Standard ist „wie bisher“: Alle Werte fließen ein, nichts ändert sich.")
+        if mode == MODE_SELECT:
+            editor_df = candidates.copy()
+            editor_df.insert(0, "Ausschließen", False)
+            st.data_editor(
+                editor_df, key=f"excl_editor_{file_hash}", hide_index=True, width="stretch",
+                disabled=[c for c in editor_df.columns if c != "Ausschließen"],
+                column_config={
+                    "Ausschließen": st.column_config.CheckboxColumn("Ausschließen", help="Haken setzen: Werte werden nicht berücksichtigt."),
+                    "rule_key": None,
+                    "Begründung": st.column_config.TextColumn(width="large"),
+                })
+        else:
+            st.dataframe(candidates.drop(columns="rule_key"), width="stretch", hide_index=True)
+        log = report.exclusion_log
+        if len(log.summary):
+            n_ex = f"{log.n_values:,}".replace(",", ".")
+            st.info(f"Aktuell nicht berücksichtigt: **{n_ex}** Werte in **{log.n_columns}** "
+                    f"{'Spalte' if log.n_columns == 1 else 'Spalten'}. "
+                    "Sie fehlen in den Abbildungen und fließen nicht in Kennwerte, Auswertungstext, Bewertung und "
+                    "Einsparpotenzial ein. Das Protokoll steht im Tab „Auswertung“.")
+        st.caption("Ausgeschlossene Werte werden wie Fehlwerte behandelt. Die Tabelle oben zeigt weiterhin die "
+                   "unveränderten Rohdaten; die Rohdatei wird nie verändert.")
+
 narrative_by_key: dict[str, list] = {}
 for block in active_narrative:
     for key in block.figure_keys:
@@ -293,6 +371,28 @@ with tabs["🧠 Auswertung"]:
             titles = [e.title for e in report.figures if e.key in block.figure_keys]
             if titles:
                 st.caption("Bezug: " + ", ".join(titles))
+
+    st.divider()
+    st.subheader("🚫 Nicht berücksichtigte Werte")
+    log = report.exclusion_log
+    if not len(log.summary):
+        st.caption("Es wurden keine Werte ausgeschlossen, alle Messwerte fließen in die Auswertung ein. "
+                   "Fehlerhafte Werte lassen sich im Tab „Datenprüfung“ ausschließen.")
+    else:
+        e1, e2, e3 = st.columns(3)
+        e1.metric("Werte ausgeschlossen", f"{log.n_values:,}".replace(",", "."))
+        e2.metric("Spalten betroffen", log.n_columns)
+        share = 100 * log.n_values / (len(report.raw_df) * report.raw_df.shape[1])
+        e3.metric("Anteil aller Messwerte", f"{share:.3f} %".replace(".", ","))
+        st.dataframe(log.summary, width="stretch", hide_index=True,
+                     column_config={"Begründung": st.column_config.TextColumn(width="large")})
+        st.caption("Diese Werte sind in Abbildungen, Kennwerten, Auswertungstext, Bewertung und Einsparpotenzial "
+                   "nicht berücksichtigt. Die Datenprüfung zeigt weiterhin die Rohdaten.")
+        with st.expander(f"Einzelwerte anzeigen ({len(log.details):,})".replace(",", ".")):
+            st.dataframe(log.details, width="stretch", hide_index=True,
+                         column_config={"Zeitpunkt": st.column_config.DatetimeColumn(format="DD.MM.YYYY HH:mm")})
+            st.download_button("📥 Einzelwerte als CSV", log.details.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
+                               file_name="nicht_beruecksichtigte_werte.csv", mime="text/csv")
 
     if settings.show_savings and report.savings is not None:
         st.divider()
@@ -342,7 +442,7 @@ if settings.show_comparison:
         rows = []
         for name, strict in (("v1 (Standard)", False), ("v2 (erweitert)", True)):
             sm = agreement_summary(compare_table1(quality_to_dataframe(
-                run_data_quality(df_full, strict=strict, fbh_limit=thresholds.fbh_limit))))
+                run_data_quality(report.raw_df, strict=strict, fbh_limit=thresholds.fbh_limit))))
             rows.append({"Regelsatz": name, "Übereinstimmung %": sm["Übereinstimmung %"],
                          "Trefferquote %": sm["Trefferquote % (manuelle Auffälligkeiten vom Agent gefunden)"],
                          "Genauigkeit %": sm["Genauigkeit % (Agent-Auffälligkeiten auch manuell auffällig)"],

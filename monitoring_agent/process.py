@@ -95,7 +95,7 @@ def _measure(ctx: Ctx) -> dict[str, tuple[float | None, str, str]]:
         ok = total = 0
         for c in COLUMNS:
             m = ctx.manual_minmax.loc[c.short]
-            for key, val in (("Min", rep.df[c.short].min()), ("Max", rep.df[c.short].max())):
+            for key, val in (("Min", rep.raw_df[c.short].min()), ("Max", rep.raw_df[c.short].max())):
                 total += 1
                 ok += int(pd.notna(m[key]) and abs(val - m[key]) <= 0.01)
         out["DP2"] = (_pct(ok, total), f"{ok} von {total} Kennwerten identisch", f"{total} Kennwerte in der Kopfzeile")
@@ -234,7 +234,7 @@ def optimization_hints(crit: pd.DataFrame, ctx: Ctx, fbh_limit: float = 40.0) ->
     hints: dict[str, str] = {}
     failing = set(crit[crit["Status"].isin([STATUS_FAIL, STATUS_NA])]["ID"])
     if failing & {"DP3", "DP4"}:
-        v2 = agreement_summary(compare_table1(quality_to_dataframe(run_data_quality(ctx.report.df, strict=True, fbh_limit=fbh_limit))))
+        v2 = agreement_summary(compare_table1(quality_to_dataframe(run_data_quality(ctx.report.raw_df, strict=True, fbh_limit=fbh_limit))))
         rec = v2["Trefferquote % (manuelle Auffälligkeiten vom Agent gefunden)"]
         prec = v2["Genauigkeit % (Agent-Auffälligkeiten auch manuell auffällig)"]
         hints["DP3"] = (f"Erweiterte Prüfregeln (v2) aktivieren: Die Trefferquote steigt dann auf {rec:.0f} %. "

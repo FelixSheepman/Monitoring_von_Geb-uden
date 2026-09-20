@@ -16,6 +16,7 @@ from . import anomalies as an
 from .assessment import build_assessment, data_coverage, measurement_head
 from . import figures as fx
 from .metrics import daily_consumption
+from .exclusion import ExclusionLog, apply_exclusions
 from .extras import availability_daily, pump_runtime_monthly, savings_potential
 from .narrative import NarrativeBlock, build_narrative
 from .quality import quality_to_dataframe, run_data_quality
@@ -45,21 +46,34 @@ class Report:
     anomaly_counts: dict[str, int] = field(default_factory=dict)
     carpet_year: int = 2025
     carpet_month: int = 2
+    raw_df: pd.DataFrame | None = None  # Rohdaten vor dem Ausschluss fehlerhafter Werte (df ist ggf. bereinigt)
+    exclusion_log: ExclusionLog = field(default_factory=ExclusionLog)
+
+    def __post_init__(self) -> None:
+        if self.raw_df is None:
+            self.raw_df = self.df
 
 
 def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 2,
                   display_resample: str | None = None, show_anomalies: bool = False,
-                  thresholds: Thresholds | None = None, strict_rules: bool = False) -> Report:
+                  thresholds: Thresholds | None = None, strict_rules: bool = False,
+                  excluded: frozenset | None = None) -> Report:
     """`df` ist immer die volle Rohauflösung und wird für Datenprüfung, Carpetplots
     und Tagesverbrauchsberechnungen verwendet (Glätten würde dort Aussetzer/Resets
     verdecken bzw. die Tagesdifferenz-Logik verfälschen). `display_resample`
     (z.B. "h" oder "D") glättet ausschließlich die reinen Zeitverlaufs-Liniendiagramme
-    für eine ruhigere Darstellung."""
+    für eine ruhigere Darstellung.
+
+    `excluded` ist eine Auswahl von (Spalte, Regel)-Paaren fehlerhafter Werte (siehe exclusion.py). Die Datenprüfung
+    bewertet immer die Rohdaten; alle weiteren Schritte (Grafiken, Kennwerte, Bewertung) rechnen ohne die
+    ausgeschlossenen Werte. Das Protokoll steht in `Report.exclusion_log`."""
     th = thresholds or Thresholds()
     timings: dict[str, float] = {}
     t0 = time.perf_counter()
-    quality_results = run_data_quality(df, strict=strict_rules, fbh_limit=th.fbh_limit)
+    raw_df = df
+    quality_results = run_data_quality(raw_df, strict=strict_rules, fbh_limit=th.fbh_limit)
     quality_df = quality_to_dataframe(quality_results)
+    df, exclusion_log = apply_exclusions(raw_df, excluded)
     timings["Datenprüfung"] = time.perf_counter() - t0
 
     t0 = time.perf_counter()
@@ -179,7 +193,7 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
     return Report(df=df, quality_df=quality_df, figures=figs, narrative=narrative,
                   timings=timings, anomaly_counts=anomaly_counts, savings=savings, thresholds=th,
                   head_table=head_table, coverage=coverage, assessment=assessment,
-                  carpet_year=carpet_year, carpet_month=carpet_month)
+                  carpet_year=carpet_year, carpet_month=carpet_month, raw_df=raw_df, exclusion_log=exclusion_log)
 
 
 def _apply_anomalies(df: pd.DataFrame, figs: list[FigureEntry], th: Thresholds) -> dict[str, int]:

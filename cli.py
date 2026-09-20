@@ -20,6 +20,7 @@ from pathlib import Path
 
 from monitoring_agent.data_loader import load_measurements
 from monitoring_agent.excel_export import export_workbook
+from monitoring_agent.exclusion import clear_only, find_invalid
 from monitoring_agent.report import build_report
 
 
@@ -30,6 +31,9 @@ def main() -> int:
                          help="Pfad der erzeugten Report-.xlsx (Default: monitoring_report.xlsx)")
     parser.add_argument("--docx", help="Optional: zusätzlich einen Word-Bericht (.docx) erzeugen")
     parser.add_argument("--anomalies", action="store_true", help="Anomalien in den Diagrammen markieren")
+    parser.add_argument("--exclude-invalid", action="store_true",
+                         help="Eindeutig fehlerhafte Werte (Nullwerte, Werte außerhalb des Bereichs, Zähler-Rücksprünge) "
+                              "von der Auswertung ausschließen; das Protokoll steht in der Excel-Arbeitsmappe")
     parser.add_argument("--carpet-year", type=int, default=2025)
     parser.add_argument("--carpet-month", type=int, default=2)
     args = parser.parse_args()
@@ -44,8 +48,11 @@ def main() -> int:
     print(f"  {len(df):,} Zeitschritte, {df.index.min()} bis {df.index.max()}")
 
     print("Führe Datenprüfung durch und erstelle Abbildungen...")
+    excluded = clear_only(find_invalid(df)) if args.exclude_invalid else None
     report = build_report(df, carpet_year=args.carpet_year, carpet_month=args.carpet_month,
-                          show_anomalies=args.anomalies)
+                          show_anomalies=args.anomalies, excluded=excluded)
+    if args.exclude_invalid:
+        print(f"  {report.exclusion_log.n_values} fehlerhafte Werte in {report.exclusion_log.n_columns} Spalten ausgeschlossen")
 
     n_auffaellig = (report.quality_df["Plausibilität"] == "Auffällig!").sum()
     print(f"  {len(report.quality_df)} Spalten geprüft, davon {n_auffaellig} auffällig")

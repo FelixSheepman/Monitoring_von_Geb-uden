@@ -133,6 +133,13 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
         n += 1
         doc.add_heading(f"{n} {name}", 1)
 
+    table_no = 0
+
+    def table_caption(text: str) -> None:
+        nonlocal table_no
+        table_no += 1
+        _bold_caption(doc, f"Tabelle {table_no}: {text}")
+
     # ---- 1 Einleitung und Datengrundlage
     chapter(REPORT_SECTIONS[0])
     doc.add_paragraph(
@@ -149,7 +156,7 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
             "Für ein aussagekräftiges Monitoring sollten mindestens zwei Heizperioden und eine Sommerperiode erfasst sein. "
             "Die Tabelle zeigt die Abdeckung der Zeiträume mit Messdaten."
         )
-        _bold_caption(doc, "Tabelle 1: Datenabdeckung der Heiz- und Sommerperioden")
+        table_caption("Datenabdeckung der Heiz- und Sommerperioden")
         _table(doc, report.coverage, [2.6, 4.6, 2.2, 2.2, 2.2, 1.6], status_col="Erfüllt",
                colors={"ja": GREEN, "nein": RED})
 
@@ -160,7 +167,7 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
         "Grün markierte Spalten sind plausibel, rot markierte weisen Auffälligkeiten auf."
     )
     q = report.quality_df[["Spalte", "Bezeichnung", "Einheit", "Min", "Max", "Plausibilität", "Bewertung"]]
-    _bold_caption(doc, "Tabelle 2: Datenprüfung")
+    table_caption("Datenprüfung")
     _table(doc, q, [1.0, 4.6, 1.2, 1.5, 1.5, 1.8, 5.0], status_col="Plausibilität", font_pt=7)
     if report.head_table is not None:
         doc.add_paragraph()
@@ -205,13 +212,27 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
         doc.add_heading(b.heading, 3)
         doc.add_paragraph(b.text)
 
+    log = getattr(report, "exclusion_log", None)
+    if log is not None and len(log.summary):
+        doc.add_heading("Nicht berücksichtigte Messwerte", 2)
+        n_values = f"{log.n_values:,}".replace(",", ".")
+        doc.add_paragraph(
+            f"Auf Entscheidung der Bearbeiter wurden {n_values} fehlerhafte Messwerte in {log.n_columns} Spalte(n) "
+            "von der Auswertung ausgeschlossen. Sie sind in den Abbildungen, Kennwerten, der Bewertung und der "
+            "Einsparabschätzung nicht berücksichtigt und werden wie Fehlwerte behandelt. Die Datenprüfung "
+            "bezieht sich auf die unveränderten Rohdaten. Die Einzelwerte stehen in der Excel-Arbeitsmappe."
+        )
+        table_caption("Nicht berücksichtigte Messwerte mit Begründung")
+        _table(doc, log.summary[["Spalte", "Regel", "Anzahl", "Erster", "Letzter", "Begründung"]],
+               [3.2, 2.8, 1.3, 2.2, 2.2, 5.0], font_pt=7)
+
     # ---- 4 Energieeinsparpotenzial
     chapter(REPORT_SECTIONS[3])
     if getattr(report, "savings", None) is not None and include_savings:
         intro, m1, m2, concl = savings_explanations(df, th)
         doc.add_heading(intro.heading, 2)
         doc.add_paragraph(intro.text)
-        _bold_caption(doc, "Tabelle 3: Einsparpotenzial der untersuchten Maßnahmen")
+        table_caption("Einsparpotenzial der untersuchten Maßnahmen")
         _table(doc, report.savings[["Maßnahme", "Annahme", "Einsparung kWh/a", "Kosten €/a", "Anteil %"]],
                [3.6, 6.2, 2.4, 2.0, 1.6])
         for b in (m1, m2, concl):
@@ -226,7 +247,7 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
     if include_assessment and report.assessment is not None and len(report.assessment):
         texts = assessment_texts(report.assessment, report.savings if include_savings else None)
         doc.add_paragraph(texts["bewertung"])
-        _bold_caption(doc, "Tabelle 4: Bewertung und Priorisierung der Befunde")
+        table_caption("Bewertung und Priorisierung der Befunde")
         a = report.assessment[["Nr.", "Befund", "Schweregrad", "Kennzahl", "Empfehlung"]]
         _table(doc, a, [0.9, 3.6, 1.6, 4.2, 5.9], status_col="Schweregrad", colors=SEVERITY_COLORS, font_pt=7)
         doc.add_heading("Einstufungsregeln", 3)
@@ -244,7 +265,7 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
     if texts:
         doc.add_paragraph(texts["zusammenfassung"])
         doc.add_heading("Überprüfung theoretischer Aussagen in der Praxis", 3)
-        _bold_caption(doc, "Tabelle 5: Theoretische Aussagen und Praxiswerte")
+        table_caption("Theoretische Aussagen und Praxiswerte")
         _table(doc, theory_vs_practice(df, th, report.savings if include_savings else None),
                [5.0, 1.9, 5.3, 4.0], font_pt=7)
     else:
@@ -253,7 +274,7 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
     if comparison is not None and len(comparison):
         n += 1
         doc.add_heading(f"{n} Vergleich manuelle Auswertung / Agent", 1)
-        _bold_caption(doc, "Tabelle 6: Gegenüberstellung der Datenprüfung")
+        table_caption("Gegenüberstellung der Datenprüfung")
         cmp_df = comparison[["Spalte", "Manuell", "Agent", "Ergebnis", "Manueller_Befund", "Agent_Befund"]]
         _table(doc, cmp_df, [1.0, 1.8, 1.8, 2.6, 4.2, 4.2], status_col="Ergebnis", font_pt=7)
 

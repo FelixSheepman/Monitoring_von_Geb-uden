@@ -105,9 +105,9 @@ Zeitraum, Anzahl der Messpunkte, Zahl der plausiblen und der auffälligen Spalte
 
 | Tab | Inhalt |
 |---|---|
-| **🔍 Datenprüfung** | Tabelle 1: jede Spalte mit Min, Max, Fehlwerten, Status und Begründung. Darunter der Messdatenkopf (Abbildung 1) und die Datenabdeckung der Heiz- und Sommerperioden |
+| **🔍 Datenprüfung** | Tabelle 1: jede Spalte mit Min, Max, Fehlwerten, Status und Begründung. Darunter der Messdatenkopf (Abbildung 1), die Datenabdeckung der Heiz- und Sommerperioden und die Auswahl, ob erkannte fehlerhafte Werte in die Auswertung einfließen (siehe 6.12) |
 | **📈 Abbildungen** | Alle Diagramme (Abbildung 2 bis 14) mit Erklärung und der passenden Auswertung darunter |
-| **🧠 Auswertung** | Die Auswertungstexte, dazu das Energieeinsparpotenzial mit Erläuterung |
+| **🧠 Auswertung** | Die Auswertungstexte, darunter die Tabelle der nicht berücksichtigten Werte mit Begründung, dazu das Energieeinsparpotenzial mit Erläuterung |
 | **🏁 Bewertung** | Alle Befunde nach Schweregrad eingestuft, mit Regel, Kennzahl und Empfehlung (Kap. 6.5), dazu Zusammenfassung und Empfehlungen (Kap. 6.6) |
 | **⚖️ Vergleich** | Gegenüberstellung mit der manuellen Auswertung und der Entwurf für Kapitel 8 je Zwischenschritt |
 | **🧭 Vorgehen** | Zwischenschritte, Kontrollkriterien mit automatischer Prüfung, Aufbau des KI-Agenten, Sensorik-Übersicht, Diagrammtypen |
@@ -297,6 +297,22 @@ Dieser Ablauf unterstützt den Vergleich der konventionellen Bearbeitung mit der
 4. Der **Theorie-Praxis-Abgleich** prüft sieben theoretische Aussagen aus eurer Arbeit gegen die Messdaten, zum Beispiel die Heizgrenze von 15 °C (nicht bestätigt, weil in 96 % der Zeit weiter geheizt wird) oder die Auslegung von Fußbodenheizungen als Niedertemperatursysteme (teilweise bestätigt, Abweichung in den KI-Räumen von Gebäude 08).
 5. Darunter stehen Zusammenfassung, Empfehlungen und ein **Ausblick als Entwurf** für Kapitel 10.
 
+### 6.12 Beispiel: Fehlerhafte Werte ausschließen
+
+**Ziel:** Entscheiden, ob erkannte Fehlwerte in Diagrammen, Kennwerten und Bewertung mitzählen.
+
+1. Tab **🔍 Datenprüfung**, ganz nach unten zum Abschnitt **Fehlerhafte Werte behandeln**. Im Beispiel meldet die Prüfung **40 eindeutig fehlerhafte Werte**: Nullwert-Aussetzer bei Vor-, Rücklauf und Sollwerten sowie Zähler-Rücksprünge.
+2. Wählt die Behandlung:
+   - **Alle Werte behalten (wie bisher)** ist die Voreinstellung. Nichts ändert sich.
+   - **Nur ausgewählte Werte ausschließen** zeigt eine Tabelle mit einem Kästchen je Spalte und Fehlerart. Ihr seht Anzahl, Zeitraum und die Begründung. Setzt Haken bei den Werten, die nicht mitzählen sollen. Im Beispiel: die 16 Nullwerte der Stat. Heizung Geb.06 VL (Soll).
+   - **Alle eindeutig fehlerhaften Werte ausschließen** wählt alle Nullwerte, Werte außerhalb des plausiblen Bereichs und Zähler-Rücksprünge auf einmal.
+3. Die App rechnet sofort neu. Die ausgeschlossenen Werte fehlen in den Abbildungen und fließen nicht in Kennwerte, Auswertungstexte, Bewertung und Einsparpotenzial ein. Sie werden wie Fehlwerte behandelt. Die Tabelle der Datenprüfung zeigt weiterhin die unveränderten Rohdaten, und die Rohdatei wird nie verändert.
+4. Tab **🧠 Auswertung**, Abschnitt **Nicht berücksichtigte Werte**: Die Tabelle nennt je Spalte und Fehlerart die Anzahl, den ersten und letzten Zeitpunkt und die Begründung. Unter **Einzelwerte anzeigen** steht jeder ausgeschlossene Wert mit Zeitpunkt und Messwert. Die Tabellen lassen sich sortieren, die Einzelwerte als CSV herunterladen. Excel-Arbeitsmappe und Word-Bericht enthalten dieselbe Übersicht.
+
+**Sonderfall Rücklauf über Vorlauf:** In den Beispieldaten liegt der Rücklauf in sehr vielen Zeitschritten (94.338 Werte) über dem Vorlauf. Das kann ein echter Messwert sein, zum Beispiel wenn die Pumpe steht und die Leitung auskühlt. Diese Werte werden deshalb nie automatisch ausgeschlossen, sondern nur, wenn ihr sie in der Einzelauswahl ausdrücklich abhakt. Schaut vorher nach, wie viele Werte einer Spalte das betrifft: Bei „RLT primär VL“ sind es 36 % aller Zeitschritte.
+
+**Ergebnis:** Ihr steuert selbst, welche Werte in die Auswertung eingehen, und könnt jede Entscheidung mit Begründung nachweisen.
+
 ## 7. Ergebnisse richtig lesen
 
 - **Auffällig heißt nicht fehlerhaft.** Die Datenprüfung meldet Hinweise. Ob ein Wert ein Fehler ist, entscheidet ihr mit Anlagenkenntnis. Beispiel: Ein Rücklauf über dem Vorlauf kann ein Messfehler sein, aber auch ein kurzer Rückwärtsfluss.
@@ -346,6 +362,7 @@ Für wiederkehrende Auswertungen, zum Beispiel jeden Monat mit neuen Daten:
 | `--output` | Excel-Arbeitsmappe (Standard: `monitoring_report.xlsx`) |
 | `--docx` | Zusätzlich einen Word-Bericht erzeugen |
 | `--anomalies` | Anomalien in den Diagrammen markieren |
+| `--exclude-invalid` | Eindeutig fehlerhafte Werte von der Auswertung ausschließen (siehe 6.12); das Protokoll steht im Excel-Blatt „Ausgeschlossene Werte“ |
 | `--carpet-year`, `--carpet-month` | Zeitraum der Carpetplots (Standard: Februar 2025) |
 
 ### 9.3 Tests
@@ -380,5 +397,6 @@ Die Zuordnung von Excel-Spalten zu Messpunkten (Zone und Rolle, z. B. Vorlauf, R
 | **Zwischenschritt** | Einer der fünf Arbeitsschritte: Datenprüfung, Grafikerstellung, Auswertung, Bewertung, Berichtserstellung |
 | **Kontrollkriterium** | Messbare Bedingung, an der geprüft wird, ob ein Zwischenschritt gelungen ist |
 | **Referenzvergleich / Eigenprüfung** | Vergleich mit dem manuellen Ergebnis / Prüfung von Vollständigkeit und Konfiguration ohne Referenz |
+| **Ausschluss fehlerhafter Werte** | Erkannte Fehlwerte werden auf Wunsch wie fehlende Werte behandelt: Sie erscheinen nicht in Grafiken und zählen nicht in Kennwerten und Bewertung. Die Rohdaten bleiben unverändert, jeder Ausschluss steht mit Begründung im Protokoll |
 | **Schweregrad** | Einstufung eines Befunds in hoch, mittel oder gering nach festen Regeln |
 | **Trefferquote / Genauigkeit** | Kennzahlen im Vergleich: gefundene Auffälligkeiten von allen erwarteten / richtige von allen gemeldeten |
