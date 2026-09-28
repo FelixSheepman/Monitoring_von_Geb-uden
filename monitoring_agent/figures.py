@@ -122,6 +122,107 @@ def fig_carpet(df: pd.DataFrame, value_col: str, year: int, month: int, title: s
     return fig
 
 
+CARPET_GRANULARITIES = ("Jahr", "Monat", "Woche", "Tag")
+_WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+
+
+def carpet_window(anchor: pd.Timestamp, granularity: str) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """[Start, Ende) des Zeitfensters fuer die gewaehlte Granularitaet; `anchor` legt fest, welches
+    Jahr/Monat/Woche/welcher Tag gezeigt wird (bei Woche/Tag ist nur das Datum von anchor relevant)."""
+    if granularity == "Jahr":
+        start = pd.Timestamp(year=anchor.year, month=1, day=1)
+        return start, pd.Timestamp(year=anchor.year + 1, month=1, day=1)
+    if granularity == "Monat":
+        start = pd.Timestamp(year=anchor.year, month=anchor.month, day=1)
+        return start, start + pd.offsets.MonthBegin(1)
+    if granularity == "Woche":
+        start = anchor.normalize() - pd.Timedelta(days=anchor.weekday())
+        return start, start + pd.Timedelta(days=7)
+    start = anchor.normalize()
+    return start, start + pd.Timedelta(days=1)
+
+
+def carpet_period_label(granularity: str, anchor: pd.Timestamp) -> str:
+    """Kurzbezeichnung des Zeitfensters fuer Titel/Beschriftung, z.B. '02/2025', 'KW 6 (03.02.2025)'."""
+    if granularity == "Jahr":
+        return f"{anchor.year}"
+    if granularity == "Monat":
+        return f"{anchor.month:02d}/{anchor.year}"
+    if granularity == "Woche":
+        start, _ = carpet_window(anchor, "Woche")
+        return f"KW {start.isocalendar().week} ({start:%d.%m.%Y})"
+    return f"{anchor:%d.%m.%Y}"
+
+
+def fig_carpet_window(df: pd.DataFrame, value_col: str, granularity: str, anchor: pd.Timestamp, title: str,
+                       zmin: float | None = None, zmax: float | None = None, unit: str = "°C",
+                       annotate_col: str | None = None, annotate_label: str = "Außentemp.",
+                       annotate_unit: str = "°C") -> go.Figure:
+    """Carpetplot ueber ein waehlbares Zeitfenster (Jahr/Monat/Woche/Tag) statt eines fest hinterlegten
+    Monats; jede Zelle bleibt ein einzelner 15-Min-Messwert (kein Glaetten). Bei Woche/Monat/Tag laesst
+    sich eine zweite Messgroesse (z.B. Aussentemperatur) als Zahl in die Zelle schreiben, um den
+    Zusammenhang mit `value_col` sichtbar zu machen (bei Jahr waere das wegen der Zellenzahl unleserlich,
+    daher dort automatisch ohne Beschriftung). Farbskala fix auf reale Betriebsgrenzen (kein Auto-Scaling)."""
+    anchor = pd.Timestamp(anchor)
+    start, end = carpet_window(anchor, granularity)
+    use_annotate = annotate_col is not None and annotate_col != value_col and granularity != "Jahr"
+    cols = [value_col] + ([annotate_col] if use_annotate else [])
+    sub = df.loc[start:end - pd.Timedelta(minutes=1), cols].dropna(how="all").copy()
+
+    if sub.empty:
+        fig = go.Figure(go.Heatmap(z=[[None]], zmin=zmin, zmax=zmax, colorbar=dict(title=unit)))
+        fig.update_layout(**_base_layout(f"{title} – keine Messwerte in diesem Zeitraum", "", ""))
+        return fig
+
+    day = sub.index.normalize()
+    sub["Zeit"] = sub.index.strftime("%H:%M")
+    if granularity == "Tag":
+        sub["Spalte"] = "Verlauf"
+        col_order = ["Verlauf"]
+        x_title, y_title = "", "Uhrzeit"
+    elif granularity == "Woche":
+        sub["Spalte"] = [_WEEKDAYS[d] for d in sub.index.weekday]
+        col_order = _WEEKDAYS
+        x_title, y_title = "Wochentag", "Uhrzeit"
+    elif granularity == "Monat":
+        sub["Spalte"] = sub.index.day
+        col_order = sorted(sub["Spalte"].unique())
+        x_title, y_title = "Tag im Monat", "Uhrzeit"
+    else:  # Jahr
+        order_df = pd.DataFrame({"_tag": day, "Spalte": day.strftime("%d.%m.")}).drop_duplicates().sort_values("_tag")
+        sub["Spalte"] = day.strftime("%d.%m.")
+        col_order = order_df["Spalte"].tolist()
+        x_title, y_title = "Tag im Jahr", "Uhrzeit"
+
+    pivot = sub.pivot_table(index="Zeit", columns="Spalte", values=value_col, aggfunc="mean") \
+        .sort_index().reindex(columns=col_order)
+
+    heat = dict(z=pivot.values, x=pivot.columns.astype(str), y=pivot.index,
+                colorscale="RdYlBu_r", zmin=zmin, zmax=zmax, colorbar=dict(title=unit))
+    hover = "%{x}<br>%{y} Uhr<br>%{z:.1f} " + unit
+    if use_annotate:
+        apivot = sub.pivot_table(index="Zeit", columns="Spalte", values=annotate_col, aggfunc="mean") \
+            .sort_index().reindex(columns=col_order)
+        heat["text"], heat["texttemplate"], heat["textfont"] = apivot.values, "%{text:.0f}", dict(size=8)
+        hover += f"<br>{annotate_label}: " + "%{text:.1f} " + annotate_unit
+    heat["hovertemplate"] = hover + "<extra></extra>"
+
+    if granularity == "Tag":  # als waagerechter Streifen (Uhrzeit von links nach rechts) statt 1-Spalten-Saeule
+        heat["x"], heat["y"] = heat["y"], heat["x"]
+        heat["z"] = np.transpose(heat["z"])
+        if "text" in heat:
+            heat["text"] = np.transpose(heat["text"])
+        x_title, y_title = "Uhrzeit", ""
+
+    fig = go.Figure(go.Heatmap(**heat))
+    fig.update_layout(**_base_layout(title, y_title, x_title))
+    fig.update_layout(hovermode="closest", legend=None)
+    if granularity == "Tag":
+        fig.update_yaxes(showticklabels=False)
+        fig.update_layout(height=260)
+    return fig
+
+
 def fig_zone_comparison(df: pd.DataFrame, series: list[tuple[str, str]], title: str,
                          unit: str = "°C") -> go.Figure:
     """Abbildung 8: Zonenvergleich mehrerer Vorlauftemperaturen (>=2 Serien ->

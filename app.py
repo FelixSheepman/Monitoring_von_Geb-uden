@@ -14,6 +14,7 @@ import os
 import re
 import tempfile
 import time
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -90,9 +91,24 @@ with st.sidebar:
         use_sample = st.checkbox("Beispieldatensatz verwenden (Messdaten 2024–2026)", value=True)
 
     st.divider()
-    st.header("Carpetplot-Zeitraum")
-    carpet_year = st.number_input("Jahr", min_value=2020, max_value=2035, value=2025, step=1)
-    carpet_month = st.number_input("Monat", min_value=1, max_value=12, value=2, step=1)
+    st.header("Carpetplot-Auflösung")
+    carpet_granularity = st.selectbox(
+        "Zeitfenster", list(fx.CARPET_GRANULARITIES), index=1,
+        help="Jede Zelle zeigt immer einen einzelnen 15-Minuten-Messwert, ohne Glättung – Jahr/Woche/Tag "
+             "zoomen nur das Zeitfenster, nicht die Genauigkeit. Bei Woche und Tag steht zusätzlich die "
+             "Außentemperatur in jeder Zelle (Zusammenhang Vorlauf/Außentemperatur, siehe Abbildung 5).",
+    )
+    if carpet_granularity == "Jahr":
+        carpet_year = st.number_input("Jahr", min_value=2020, max_value=2035, value=2025, step=1)
+        carpet_month, carpet_day = 2, 1
+    elif carpet_granularity == "Monat":
+        carpet_year = st.number_input("Jahr", min_value=2020, max_value=2035, value=2025, step=1)
+        carpet_month = st.number_input("Monat", min_value=1, max_value=12, value=2, step=1)
+        carpet_day = 1
+    else:
+        label = "ein beliebiger Tag in der Woche" if carpet_granularity == "Woche" else "Tag"
+        picked = st.date_input(label, value=date(2025, 2, 3), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+        carpet_year, carpet_month, carpet_day = picked.year, picked.month, picked.day
 
     st.divider()
     st.header("Darstellung Zeitreihen")
@@ -150,10 +166,10 @@ def _manual_minmax(file_bytes: bytes):
 
 
 @st.cache_data(show_spinner="Führe Datenprüfung durch und erstelle Abbildungen...")
-def _build(file_bytes: bytes, year: int, month: int, resample_rule: str | None, anomalies: bool,
-           th: Thresholds, strict: bool, excluded: frozenset):
+def _build(file_bytes: bytes, year: int, month: int, day: int, granularity: str, resample_rule: str | None,
+           anomalies: bool, th: Thresholds, strict: bool, excluded: frozenset):
     df, load_seconds = _load(file_bytes)
-    report = build_report(df, carpet_year=year, carpet_month=month,
+    report = build_report(df, carpet_year=year, carpet_month=month, carpet_day=day, carpet_granularity=granularity,
                           display_resample=resample_rule, show_anomalies=anomalies,
                           thresholds=th, strict_rules=strict, excluded=excluded)
     report.timings = {"Einlesen": load_seconds, **report.timings}
@@ -198,7 +214,7 @@ file_hash = hashlib.md5(input_bytes).hexdigest()[:10]
 try:
     candidates = _candidates(input_bytes)
     excluded = _current_exclusions(candidates, file_hash)
-    report = _build(input_bytes, int(carpet_year), int(carpet_month),
+    report = _build(input_bytes, int(carpet_year), int(carpet_month), int(carpet_day), carpet_granularity,
                     RESAMPLE_MAP[resample_label], settings.show_anomalies, thresholds, settings.strict_rules, excluded)
 except ValueError as e:
     st.error(str(e))
@@ -417,7 +433,7 @@ with tabs["🧠 Auswertung"]:
 
 if settings.show_buildings:
     with tabs["🏢 Gebäude"]:
-        render_heizkreise(report, int(carpet_year), int(carpet_month))
+        render_heizkreise(report, carpet_granularity, date(int(carpet_year), int(carpet_month), int(carpet_day)))
 
 if settings.show_assessment:
     with tabs["🏁 Bewertung"]:
@@ -521,17 +537,31 @@ if settings.show_explorer:
             st.plotly_chart(fx.fig_heating_curve(sub, x_col, y_col, f"{y_col} vs. {x_col}", x_label=x_col, y_label=y_col),
                             width="stretch")
         else:
-            cc, cy_, cm = st.columns(3)
-            col = cc.selectbox("Spalte", names, index=1)
-            year = cy_.number_input("Jahr", 2020, 2035, int(df_full.index.min().year) + 1, key="exp_year")
-            month = cm.number_input("Monat", 1, 12, 2, key="exp_month")
+            col = st.selectbox("Spalte", names, index=1)
+            gran = st.radio("Zeitfenster", list(fx.CARPET_GRANULARITIES), index=1, horizontal=True, key="exp_gran")
+            if gran == "Jahr":
+                year = st.number_input("Jahr", 2020, 2035, int(df_full.index.min().year) + 1, key="exp_year")
+                anchor = date(int(year), 1, 1)
+            elif gran == "Monat":
+                cy_, cm = st.columns(2)
+                year = cy_.number_input("Jahr", 2020, 2035, int(df_full.index.min().year) + 1, key="exp_year")
+                month = cm.number_input("Monat", 1, 12, 2, key="exp_month")
+                anchor = date(int(year), int(month), 1)
+            else:
+                anchor = st.date_input("Ein beliebiger Tag darin" if gran == "Woche" else "Tag",
+                                       value=min(max(date(2025, 2, 3), d_min), d_max), min_value=d_min, max_value=d_max,
+                                       key="exp_day")
             series = df_full[col].dropna()
             lo, hi = float(series.quantile(0.01)), float(series.quantile(0.99))
             zr = st.slider("Farbskala fix (Kap. 5.2: feste Betriebsgrenzen)", float(series.min()), float(series.max()),
                            (lo, hi))
             unit = next(c.unit for c in COLUMNS if c.short == col)
-            st.plotly_chart(fx.fig_carpet(df_full, col, int(year), int(month), f"{col} {int(month):02d}/{int(year)}",
-                                          zmin=zr[0], zmax=zr[1], unit=unit), width="stretch")
+            show_aul = col != "RLT KL01 Außenluft" and gran != "Jahr" and st.checkbox(
+                "Außentemperatur in jeder Zelle anzeigen (Zusammenhang zum Vorlauf)", value=True, key="exp_aul")
+            label = fx.carpet_period_label(gran, pd.Timestamp(anchor))
+            st.plotly_chart(fx.fig_carpet_window(
+                df_full, col, gran, pd.Timestamp(anchor), f"{col} {label}", zmin=zr[0], zmax=zr[1], unit=unit,
+                annotate_col="RLT KL01 Außenluft" if show_aul else None), width="stretch")
 
 with tabs["🗺️ Funktionsweise"]:
     plan_path = Path("docs/ablaufplan.html")

@@ -48,7 +48,7 @@ def render_data_extras(report) -> None:
 
 # ----------------------------------------------------------------------------- Gebaeude und Heizkreise
 
-def render_heizkreise(report, carpet_year: int, carpet_month: int) -> None:
+def render_heizkreise(report, carpet_granularity: str, carpet_anchor) -> None:
     st.subheader("Gebäude und Heizkreise")
     st.write(
         f"Die Anlage besteht aus **{N_HEIZKREISE} eigenständigen Heizkreisen** (jeweils mit eigenem Vor- und "
@@ -99,7 +99,7 @@ def render_heizkreise(report, carpet_year: int, carpet_month: int) -> None:
         st.dataframe(_colored(qdf, "Plausibilität", {"Plausibel": "#C6EFCE", "Auffällig!": "#FFC7CE"}),
                      width="stretch", hide_index=True)
 
-    figs = circuit_figures(report.df, kreis, carpet_year, carpet_month)
+    figs = circuit_figures(report.df, kreis, carpet_granularity, carpet_anchor)
     if not figs:
         st.warning("Für diesen Heizkreis liegen keine darstellbaren Messreihen vor.")
     for fig in figs:

@@ -56,8 +56,13 @@ def circuit_stats(df: pd.DataFrame, kreis: Heizkreis) -> dict[str, str]:
     return stats
 
 
-def circuit_figures(df: pd.DataFrame, kreis: Heizkreis, carpet_year: int, carpet_month: int) -> list[CircuitFigure]:
-    """Diagramme, die sich aus den in diesem Heizkreis tatsächlich vorhandenen Rollen ergeben."""
+AUL_COLUMN = "RLT KL01 Außenluft"  # einzige Aussentemperatur im Datensatz, gilt fuer die gesamte Anlage
+
+
+def circuit_figures(df: pd.DataFrame, kreis: Heizkreis, carpet_granularity: str, carpet_anchor: pd.Timestamp) -> list[CircuitFigure]:
+    """Diagramme, die sich aus den in diesem Heizkreis tatsächlich vorhandenen Rollen ergeben.
+    `carpet_granularity` (Jahr/Monat/Woche/Tag) und `carpet_anchor` legen das Zeitfenster des Carpetplots
+    fest (siehe figures.carpet_window)."""
     figs: list[CircuitFigure] = []
     label = kreis.art
     vl, rl = kreis.col("vl"), kreis.col("rl")
@@ -84,11 +89,16 @@ def circuit_figures(df: pd.DataFrame, kreis: Heizkreis, carpet_year: int, carpet
         series = df[vl.short].dropna()
         if len(series) > 10:
             lo, hi = float(series.quantile(0.01)), float(series.quantile(0.99))
+            has_aul = AUL_COLUMN in df.columns and vl.short != AUL_COLUMN
+            label_period = fx.carpet_period_label(carpet_granularity, pd.Timestamp(carpet_anchor))
+            note = (" Die kleine Zahl in jeder Zelle ist die Außentemperatur (°C) zur selben Uhrzeit."
+                    if has_aul and carpet_granularity != "Jahr" else "")
             figs.append(CircuitFigure(
-                "Carpetplot Vorlauf", fx.fig_carpet(df, vl.short, carpet_year, carpet_month,
-                                                     f"{label}: Vorlauftemp. {carpet_month:02d}/{carpet_year}",
-                                                     zmin=lo, zmax=hi),
-                "Farbcodierter Tagesverlauf der Vorlauftemperatur im gewählten Monat (Farbskala: 1.–99. Perzentil).",
+                "Carpetplot Vorlauf", fx.fig_carpet_window(
+                    df, vl.short, carpet_granularity, carpet_anchor, f"{label}: Vorlauftemp. {label_period}",
+                    zmin=lo, zmax=hi, annotate_col=AUL_COLUMN if has_aul else None, annotate_label="Außentemp."),
+                "Farbcodierter Verlauf der Vorlauftemperatur im gewählten Zeitfenster "
+                "(Farbskala: 1.–99. Perzentil)." + note,
             ))
     if pump is not None:
         monthly = pd.DataFrame({label: df[pump.short].resample("MS").sum() * STEP_HOURS})

@@ -46,6 +46,8 @@ class Report:
     anomaly_counts: dict[str, int] = field(default_factory=dict)
     carpet_year: int = 2025
     carpet_month: int = 2
+    carpet_day: int = 1
+    carpet_granularity: str = "Monat"
     raw_df: pd.DataFrame | None = None  # Rohdaten vor dem Ausschluss fehlerhafter Werte (df ist ggf. bereinigt)
     exclusion_log: ExclusionLog = field(default_factory=ExclusionLog)
 
@@ -54,15 +56,20 @@ class Report:
             self.raw_df = self.df
 
 
-def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 2,
-                  display_resample: str | None = None, show_anomalies: bool = False,
-                  thresholds: Thresholds | None = None, strict_rules: bool = False,
+def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 2, carpet_day: int = 1,
+                  carpet_granularity: str = "Monat", display_resample: str | None = None,
+                  show_anomalies: bool = False, thresholds: Thresholds | None = None, strict_rules: bool = False,
                   excluded: frozenset | None = None) -> Report:
     """`df` ist immer die volle Rohauflösung und wird für Datenprüfung, Carpetplots
     und Tagesverbrauchsberechnungen verwendet (Glätten würde dort Aussetzer/Resets
     verdecken bzw. die Tagesdifferenz-Logik verfälschen). `display_resample`
     (z.B. "h" oder "D") glättet ausschließlich die reinen Zeitverlaufs-Liniendiagramme
     für eine ruhigere Darstellung.
+
+    `carpet_granularity` (Jahr/Monat/Woche/Tag, Standard Monat wie bisher) legt das Zeitfenster der
+    Carpetplots (Abbildung 5/6) fest; `carpet_year`/`carpet_month`/`carpet_day` verankern es (je nach
+    Granularität wird nur ein Teil davon gebraucht, siehe figures.carpet_window). Jede Zelle bleibt ein
+    einzelner 15-Min-Messwert, unabhängig von der Granularität.
 
     `excluded` ist eine Auswahl von (Spalte, Regel)-Paaren fehlerhafter Werte (siehe exclusion.py). Die Datenprüfung
     bewertet immer die Rohdaten; alle weiteren Schritte (Grafiken, Kennwerte, Bewertung) rechnen ohne die
@@ -101,17 +108,27 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
         "Streudiagramm der Ist-Vorlauftemperatur in Abhängigkeit von der Außentemperatur mit Regressionslinie.",
     ))
 
+    carpet_anchor = pd.Timestamp(year=carpet_year, month=carpet_month, day=carpet_day)
+    carpet_label = fx.carpet_period_label(carpet_granularity, carpet_anchor)
+    annotate_note = (
+        " Die kleine Zahl in jeder Zelle ist die zugehörige Außentemperatur (°C, RLT KL01 Außenluft) zur "
+        "selben Uhrzeit – so lässt sich der Zusammenhang zwischen Vorlauf und Außentemperatur direkt ablesen."
+        if carpet_granularity != "Jahr" else
+        " Bei der Granularität „Jahr“ steht die Außentemperatur wegen der Zellenzahl nicht mit in der Zelle; "
+        "zum Ablesen Woche oder Monat wählen."
+    )
     figs.append(FigureEntry(
-        "carpet_rlt_vl", f"RLT primär VL-Temp. {carpet_month:02d}/{carpet_year}",
-        fx.fig_carpet(df, "RLT primär VL", carpet_year, carpet_month,
-                       f"RLT primär VL-Temp. {carpet_month:02d}/{carpet_year}", zmin=20, zmax=65),
-        "Carpetplot der primären Vorlauftemperatur der RLT-Anlage, Farbskala fix auf 20–65 °C.",
+        "carpet_rlt_vl", f"RLT primär VL-Temp. {carpet_label}",
+        fx.fig_carpet_window(df, "RLT primär VL", carpet_granularity, carpet_anchor,
+                             f"RLT primär VL-Temp. {carpet_label}", zmin=20, zmax=65,
+                             annotate_col="RLT KL01 Außenluft", annotate_label="Außentemp."),
+        "Carpetplot der primären Vorlauftemperatur der RLT-Anlage, Farbskala fix auf 20–65 °C." + annotate_note,
     ))
 
     figs.append(FigureEntry(
-        "carpet_rlt_rl", f"RLT primär RL-Temp. {carpet_month:02d}/{carpet_year}",
-        fx.fig_carpet(df, "RLT primär RL", carpet_year, carpet_month,
-                       f"RLT primär RL-Temp. {carpet_month:02d}/{carpet_year}", zmin=20, zmax=65),
+        "carpet_rlt_rl", f"RLT primär RL-Temp. {carpet_label}",
+        fx.fig_carpet_window(df, "RLT primär RL", carpet_granularity, carpet_anchor,
+                             f"RLT primär RL-Temp. {carpet_label}", zmin=20, zmax=65),
         "Carpetplot der primären Rücklauftemperatur der RLT-Anlage, Farbskala fix auf 20–65 °C.",
     ))
 
@@ -193,7 +210,8 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
     return Report(df=df, quality_df=quality_df, figures=figs, narrative=narrative,
                   timings=timings, anomaly_counts=anomaly_counts, savings=savings, thresholds=th,
                   head_table=head_table, coverage=coverage, assessment=assessment,
-                  carpet_year=carpet_year, carpet_month=carpet_month, raw_df=raw_df, exclusion_log=exclusion_log)
+                  carpet_year=carpet_year, carpet_month=carpet_month, carpet_day=carpet_day,
+                  carpet_granularity=carpet_granularity, raw_df=raw_df, exclusion_log=exclusion_log)
 
 
 def _apply_anomalies(df: pd.DataFrame, figs: list[FigureEntry], th: Thresholds) -> dict[str, int]:

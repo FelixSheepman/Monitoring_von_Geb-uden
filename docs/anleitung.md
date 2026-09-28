@@ -90,7 +90,7 @@ In der öffentlichen Cloud-Version werden hochgeladene Dateien auf dem Server de
 | Bereich | Wozu |
 |---|---|
 | **Eingabedaten** | Datei hochladen oder den Beispieldatensatz nutzen |
-| **Carpetplot-Zeitraum** | Jahr und Monat für die beiden Carpetplots (Abbildung 5 und 6) |
+| **Carpetplot-Auflösung** | Zeitfenster für die beiden Carpetplots (Abbildung 5 und 6): Jahr, Monat, Woche oder Tag, je nach Wahl mit Jahr/Monat-Feldern oder einem Datumsfeld (siehe 6.3) |
 | **Darstellung Zeitreihen** | Auflösung der Liniendiagramme: Rohdaten (15 Min.), Stundenmittel oder Tagesmittel |
 | **⚙️ Einstellungen – Funktionen an/aus** | Einzelne Funktionen ein- oder ausschalten (Abschnitt 5) |
 | **🎚️ Schwellenwerte & Annahmen** | Grenzwerte und Annahmen per Regler ändern (Abschnitt 5) |
@@ -187,20 +187,28 @@ Die Zahlen in den Beispielen stammen aus dem mitgelieferten Datensatz.
 
 **Ergebnis:** Die Regelung hat keine wirksame Heizgrenze. Das ist ein konkreter Ansatzpunkt für die Optimierung.
 
-### 6.3 Beispiel: Sommer und Winter im Carpetplot vergleichen
+### 6.3 Beispiel: Sommer und Winter im Carpetplot vergleichen, bis auf den einzelnen Messpunkt zoomen
 
-**Ziel:** Betriebszustände einer Anlage über den Tag und über den Monat erkennen.
+**Ziel:** Betriebszustände einer Anlage über den Tag, die Woche, den Monat oder das Jahr erkennen, ohne an Genauigkeit zu verlieren.
 
-Ein Carpetplot zeigt einen Messwert als Farbfläche. Waagerecht steht der Tag im Monat, senkrecht die Uhrzeit, die Farbe ist die Temperatur (blau kalt, rot warm). Die Farbskala ist fest auf 20 bis 65 °C gesetzt, damit ihr mehrere Monate vergleichen könnt.
+Ein Carpetplot zeigt einen Messwert als Farbfläche. Jede Zelle ist immer **ein einzelner 15-Minuten-Messwert**, egal welches Zeitfenster ihr wählt – es wird nichts geglättet oder gemittelt, sondern nur mehr oder weniger davon auf einmal gezeigt. Die Farbskala ist fest auf 20 bis 65 °C gesetzt, damit ihr mehrere Zeiträume vergleichen könnt.
 
-1. Öffnet die Seitenleiste **Carpetplot-Zeitraum** und stellt Jahr 2025 und Monat 2 ein. Ihr seht den Februar: fast durchgehend rot, das Tagesmittel liegt an allen Tagen bei rund 62 °C. Auffällig ist eine blaue Phase zwischen dem 21. und 25. Februar, in der das Tagesmittel auf 41 bis 51 °C einbricht. Das ist ein Ereignis, das ihr mit dem Betreiber klären solltet.
+1. Öffnet die Seitenleiste **Carpetplot-Auflösung** und wählt das **Zeitfenster**:
+   - **Monat** (Standard, wie im Beispielbild): waagerecht der Tag im Monat, senkrecht die Uhrzeit.
+   - **Jahr**: waagerecht jeder Tag des Jahres (bis zu 365 Spalten) – der schnellste Überblick über die ganze Heizperiode auf einen Blick.
+   - **Woche**: waagerecht die 7 Wochentage, mit großen, gut lesbaren Zellen.
+   - **Tag**: ein waagerechter Streifen über 24 Stunden – die feinste Zoomstufe, jeder der 96 Viertelstundenwerte einzeln sichtbar.
+2. Bei „Jahr“ und „Monat“ stellt ihr Jahr und Monat ein, bei „Woche“ und „Tag“ genügt ein einzelnes Datum (bei „Woche“ reicht ein beliebiger Tag in der gewünschten Woche). Stellt Jahr 2025, Monat 2 ein: Der Februar ist fast durchgehend rot, das Tagesmittel liegt an allen Tagen bei rund 62 °C. Auffällig ist eine blaue Phase zwischen dem 21. und 25. Februar, in der das Tagesmittel auf 41 bis 51 °C einbricht. Das ist ein Ereignis, das ihr mit dem Betreiber klären solltet.
 ![Carpetplot Februar 2025](img/carpet_februar.png)
 
-2. Vergleicht mit dem Juli. Am schnellsten geht das im Tab **🔎 Explorer**: Diagrammtyp „Carpetplot“, Spalte „RLT primär VL“, Jahr 2025, Monat 7.
+3. In jeder Zelle von Abbildung 5 (RLT primär VL) steht zusätzlich klein die **Außentemperatur zur selben Uhrzeit** (aus „RLT KL01 Außenluft“). So seht ihr direkt, ob der Vorlauf bei kalter Außentemperatur mitzieht – bei „Woche“ und „Tag“ sind die Zellen groß genug, um die Zahl gut zu lesen; bei „Jahr“ entfällt sie wegen der vielen Zellen. Abbildung 6 (Rücklauf) zeigt keine Außentemperatur, weil hier der Zusammenhang zum Vorlauf im Vordergrund steht.
+4. Vergleicht mit dem Juli. Am schnellsten geht das im Tab **🔎 Explorer**: Diagrammtyp „Carpetplot“, Spalte „RLT primär VL“, Zeitfenster „Monat“, Jahr 2025, Monat 7. Dort lässt sich zusätzlich das Häkchen „Außentemperatur in jeder Zelle anzeigen“ abwählen, wenn die Zahlen stören.
 
 ![Carpetplot Juli 2025](img/carpet_juli.png)
 
-Im Juli liegt die Vorlauftemperatur bei etwa 22 bis 29 °C, also nahe der Raumtemperatur. Das Heizregister wird dann vermutlich nicht mit Heizwasser versorgt. Im Februar ist außerhalb der Störphase kein Tag-Nacht-Unterschied zu sehen, eine Nachtabsenkung fehlt.
+Im Juli liegt die Vorlauftemperatur bei etwa 22 bis 29 °C, also nahe der Raumtemperatur. Das Heizregister wird dann vermutlich nicht mit Heizwasser versorgt. Im Februar ist außerhalb der Störphase kein Tag-Nacht-Unterschied zu sehen, eine Nachtabsenkung fehlt. Um das für einen einzelnen Tag zu bestätigen, stellt das Zeitfenster auf „Tag“ und wählt z. B. den 10. Februar: Ihr seht alle 96 Messpunkte dieses Tages nebeneinander, mit Außentemperatur in jeder Zelle.
+
+Dieselbe Auflösung gibt es auch im Tab **🏢 Gebäude** für den Carpetplot jedes einzelnen Heizkreises (siehe 6.13).
 
 **Tipp:** Im Explorer könnt ihr die Farbskala per Regler verschieben, um kleine Unterschiede sichtbar zu machen.
 
@@ -325,7 +333,7 @@ Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vo
 
 1. Tab **🏢 Gebäude** öffnen. Oben steht eine Übersicht aller 4 Gebäude mit ihren Heizkreisen.
 2. Unter jedem Gebäude steht eine Schaltfläche je Heizkreis, zum Beispiel „4. Fußbodenheizung“ unter Gebäude 6. Anklicken wählt den Kreis aus; die Übersichtsgrafik hebt ihn farbig hervor.
-3. Darunter erscheinen Kennzahlen (z. B. Vorlauf Min/Max, Delta T, Pumpen-Laufzeitanteil), eine Datenprüfung nur für die Spalten dieses Kreises sowie Diagramme, die sich aus den vorhandenen Messgrößen ergeben: Soll-Ist-Vergleich (wenn ein Sollwert vorhanden ist), Vorlauf und Rücklauf, Temperaturspreizung, Carpetplot und Pumpenlaufzeit (wenn eine Pumpe vorhanden ist).
+3. Darunter erscheinen Kennzahlen (z. B. Vorlauf Min/Max, Delta T, Pumpen-Laufzeitanteil), eine Datenprüfung nur für die Spalten dieses Kreises sowie Diagramme, die sich aus den vorhandenen Messgrößen ergeben: Soll-Ist-Vergleich (wenn ein Sollwert vorhanden ist), Vorlauf und Rücklauf, Temperaturspreizung, Carpetplot und Pumpenlaufzeit (wenn eine Pumpe vorhanden ist). Der Carpetplot nutzt dasselbe Zeitfenster (Jahr/Monat/Woche/Tag) wie in der Seitenleiste unter „Carpetplot-Auflösung“ eingestellt (siehe 6.3) und zeigt ebenfalls die Außentemperatur in jeder Zelle.
 4. Ein erneuter Klick auf denselben Heizkreis oder **Auswahl aufheben** setzt die Auswahl zurück; die übrigen Tabs zeigen dann wieder den Gesamtbericht.
 
 **Hinweis:** Diese Ansicht ergänzt den festen Bericht und verändert ihn nicht. Bereits ausgeschlossene Werte (6.12) sind auch hier schon nicht berücksichtigt. Welche Spalte zu welchem Gebäude und Heizkreis gehört, steht in `monitoring_agent/buildings.py` und lässt sich dort anpassen, falls sich die Anlage ändert.
@@ -381,7 +389,8 @@ Für wiederkehrende Auswertungen, zum Beispiel jeden Monat mit neuen Daten:
 | `--anomalies` | Anomalien in den Diagrammen markieren |
 | `--html` | Zusätzlich einen HTML-Bericht erzeugen: eine einzelne Datei, die sich ohne Installation im Browser öffnen lässt |
 | `--exclude-invalid` | Eindeutig fehlerhafte Werte von der Auswertung ausschließen (siehe 6.12); das Protokoll steht im Excel-Blatt „Ausgeschlossene Werte“ |
-| `--carpet-year`, `--carpet-month` | Zeitraum der Carpetplots (Standard: Februar 2025) |
+| `--carpet-year`, `--carpet-month`, `--carpet-day` | Zeitpunkt der Carpetplots, je nach `--carpet-granularity` (Standard: Februar 2025) |
+| `--carpet-granularity` | Zeitfenster der Carpetplots: `Jahr`, `Monat` (Standard), `Woche` oder `Tag` (siehe 6.3) |
 
 ### 9.3 Tests
 
@@ -411,7 +420,7 @@ Die Zuordnung von Excel-Spalten zu Messpunkten (Zone und Rolle, z. B. Vorlauf, R
 | **Heizkurve** | Zusammenhang zwischen Außentemperatur und Vorlauftemperatur |
 | **Heizgrenze** | Außentemperatur, ab der die Heizung abgeschaltet werden sollte |
 | **Hydraulischer Abgleich** | Einstellung, damit alle Heizkreise richtig mit Wärme versorgt werden |
-| **Carpetplot** | Farbfläche aus Tag (waagerecht), Uhrzeit (senkrecht) und Messwert (Farbe) |
+| **Carpetplot** | Farbfläche aus Zeit (waagerecht: Tag im Jahr/Monat, Wochentag oder Uhrzeit, je nach Zeitfenster) und Uhrzeit (senkrecht) und Messwert (Farbe); jede Zelle ein einzelner 15-Min-Messwert |
 | **Zwischenschritt** | Einer der fünf Arbeitsschritte: Datenprüfung, Grafikerstellung, Auswertung, Bewertung, Berichtserstellung |
 | **Kontrollkriterium** | Messbare Bedingung, an der geprüft wird, ob ein Zwischenschritt gelungen ist |
 | **Referenzvergleich / Eigenprüfung** | Vergleich mit dem manuellen Ergebnis / Prüfung von Vollständigkeit und Konfiguration ohne Referenz |

@@ -37,6 +37,10 @@ def main() -> int:
                               "von der Auswertung ausschließen; das Protokoll steht in der Excel-Arbeitsmappe")
     parser.add_argument("--carpet-year", type=int, default=2025)
     parser.add_argument("--carpet-month", type=int, default=2)
+    parser.add_argument("--carpet-day", type=int, default=1, help="Nur für --carpet-granularity Woche/Tag relevant")
+    parser.add_argument("--carpet-granularity", choices=["Jahr", "Monat", "Woche", "Tag"], default="Monat",
+                         help="Zeitfenster der Carpetplots (Abbildung 5/6); jede Zelle bleibt ein einzelner "
+                              "15-Min-Messwert. Standard Monat wie bisher.")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -50,7 +54,8 @@ def main() -> int:
 
     print("Führe Datenprüfung durch und erstelle Abbildungen...")
     excluded = clear_only(find_invalid(df)) if args.exclude_invalid else None
-    report = build_report(df, carpet_year=args.carpet_year, carpet_month=args.carpet_month,
+    report = build_report(df, carpet_year=args.carpet_year, carpet_month=args.carpet_month, carpet_day=args.carpet_day,
+                          carpet_granularity=args.carpet_granularity,
                           show_anomalies=args.anomalies, excluded=excluded, display_resample="h")
     if args.exclude_invalid:
         print(f"  {report.exclusion_log.n_values} fehlerhafte Werte in {report.exclusion_log.n_columns} Spalten ausgeschlossen")
