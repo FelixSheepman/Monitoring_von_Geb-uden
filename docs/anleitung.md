@@ -108,6 +108,7 @@ Zeitraum, Anzahl der Messpunkte, Zahl der plausiblen und der auffälligen Spalte
 | **🔍 Datenprüfung** | Tabelle 1: jede Spalte mit Min, Max, Fehlwerten, Status und Begründung. Darunter der Messdatenkopf (Abbildung 1), die Datenabdeckung der Heiz- und Sommerperioden und die Auswahl, ob erkannte fehlerhafte Werte in die Auswertung einfließen (siehe 6.12) |
 | **📈 Abbildungen** | Alle Diagramme (Abbildung 2 bis 14) mit Erklärung und der passenden Auswertung darunter |
 | **🧠 Auswertung** | Die Auswertungstexte, darunter die Tabelle der nicht berücksichtigten Werte mit Begründung, dazu das Energieeinsparpotenzial mit Erläuterung |
+| **🏢 Gebäude** | Gebäude anklicken, Heizkreis wählen: eigene Datenprüfung, Kennzahlen und Diagramme nur für diesen Kreis (siehe 6.13) |
 | **🏁 Bewertung** | Alle Befunde nach Schweregrad eingestuft, mit Regel, Kennzahl und Empfehlung (Kap. 6.5), dazu Zusammenfassung und Empfehlungen (Kap. 6.6) |
 | **⚖️ Vergleich** | Gegenüberstellung mit der manuellen Auswertung und der Entwurf für Kapitel 8 je Zwischenschritt |
 | **🧭 Vorgehen** | Zwischenschritte, Kontrollkriterien mit automatischer Prüfung, Aufbau des KI-Agenten, Sensorik-Übersicht, Diagrammtypen |
@@ -137,6 +138,7 @@ Unter **⚙️ Einstellungen – Funktionen an/aus** steht für jede Funktion ei
 | **Vorgehen und Kontrollkriterien (Kap. 4/5)** | Blendet den Tab „Vorgehen“ ein |
 | **Forschungsfragen (Kap. 9/10)** | Blendet den Tab „Forschung“ ein |
 | **Explorer (freie Diagramme)** | Blendet den Tab „Explorer“ ein |
+| **Gebäude & Heizkreise** | Blendet den Tab „Gebäude“ ein (siehe 6.13) |
 | **Word-Berichtsexport** | Schaltet den Word-Export im Tab „Export“ frei |
 
 ### 5.2 Schwellenwerte und Annahmen
@@ -314,6 +316,19 @@ Dieser Ablauf unterstützt den Vergleich der konventionellen Bearbeitung mit der
 **Sonderfall Rücklauf über Vorlauf:** In den Beispieldaten liegt der Rücklauf in sehr vielen Zeitschritten (94.338 Werte) über dem Vorlauf. Das kann ein echter Messwert sein, zum Beispiel wenn die Pumpe steht und die Leitung auskühlt. Diese Werte werden deshalb nie automatisch ausgeschlossen, sondern nur, wenn ihr sie in der Einzelauswahl ausdrücklich abhakt. Schaut vorher nach, wie viele Werte einer Spalte das betrifft: Bei „RLT primär VL“ sind es 36 % aller Zeitschritte.
 
 **Ergebnis:** Ihr steuert selbst, welche Werte in die Auswertung eingehen, und könnt jede Entscheidung mit Begründung nachweisen.
+
+### 6.13 Beispiel: Einen Heizkreis auswählen
+
+**Ziel:** Nur einen bestimmten Heizkreis untersuchen, statt immer den ganzen Datensatz.
+
+Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vor- und Rücklauf) in 4 Gebäuden; ein Gebäude kann mehrere Heizkreise besitzen. Der feste Bericht in den übrigen Tabs zeigt immer den gesamten Datensatz (Kap. 6 der Arbeit). Der Tab **🏢 Gebäude** ergänzt eine zweite, unabhängige Sicht nur für einen ausgewählten Kreis.
+
+1. Tab **🏢 Gebäude** öffnen. Oben steht eine Übersicht aller 4 Gebäude mit ihren Heizkreisen.
+2. Unter jedem Gebäude steht eine Schaltfläche je Heizkreis, zum Beispiel „4. Fußbodenheizung“ unter Gebäude 6. Anklicken wählt den Kreis aus; die Übersichtsgrafik hebt ihn farbig hervor.
+3. Darunter erscheinen Kennzahlen (z. B. Vorlauf Min/Max, Delta T, Pumpen-Laufzeitanteil), eine Datenprüfung nur für die Spalten dieses Kreises sowie Diagramme, die sich aus den vorhandenen Messgrößen ergeben: Soll-Ist-Vergleich (wenn ein Sollwert vorhanden ist), Vorlauf und Rücklauf, Temperaturspreizung, Carpetplot und Pumpenlaufzeit (wenn eine Pumpe vorhanden ist).
+4. Ein erneuter Klick auf denselben Heizkreis oder **Auswahl aufheben** setzt die Auswahl zurück; die übrigen Tabs zeigen dann wieder den Gesamtbericht.
+
+**Hinweis:** Diese Ansicht ergänzt den festen Bericht und verändert ihn nicht. Bereits ausgeschlossene Werte (6.12) sind auch hier schon nicht berücksichtigt. Welche Spalte zu welchem Gebäude und Heizkreis gehört, steht in `monitoring_agent/buildings.py` und lässt sich dort anpassen, falls sich die Anlage ändert.
 
 ## 7. Ergebnisse richtig lesen
 

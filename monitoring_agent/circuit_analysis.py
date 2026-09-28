@@ -1,0 +1,106 @@
+"""
+Generische Auswertung fuer einen einzelnen Heizkreis (siehe buildings.py).
+
+Ergaenzt die feste Kap.-6-Auswertung (die immer den ganzen Datensatz zeigt) um eine
+zweite, unabhaengige Sicht: Datenpruefung, Kennzahlen und Diagramme nur fuer die
+Spalten eines ausgewaehlten Heizkreises. Baut auf denselben, bereits fuer den
+Gesamtbericht genutzten Grafikfunktionen auf (figures.py), damit Darstellung und
+Farbgebung konsistent bleiben.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import pandas as pd
+
+from . import figures as fx
+from .buildings import Heizkreis
+from .extras import STEP_HOURS
+
+
+@dataclass
+class CircuitFigure:
+    title: str
+    figure: object  # plotly.graph_objects.Figure
+    caption: str
+
+
+def circuit_quality(quality_df: pd.DataFrame, kreis: Heizkreis) -> pd.DataFrame:
+    """Teilmenge der Tabelle 1 (Datenprüfung) fuer die Spalten dieses Heizkreises.
+    "Bezeichnung" in quality_df ist der lange Original-Excel-Name (siehe quality.quality_to_dataframe)."""
+    names = {c.excel_name for c in (*kreis.columns, *kreis.extra_columns)}
+    return quality_df[quality_df["Bezeichnung"].isin(names)]
+
+
+def circuit_stats(df: pd.DataFrame, kreis: Heizkreis) -> dict[str, str]:
+    """Kurze Kennzahlen fuer die Kachelanzeige (nur fuer tatsaechlich vorhandene Rollen)."""
+    stats: dict[str, str] = {}
+    vl, rl, soll, pump = kreis.col("vl"), kreis.col("rl"), kreis.col("soll_vl"), kreis.col("pump")
+    if vl is not None and df[vl.short].notna().any():
+        s = df[vl.short]
+        stats["Vorlauf Min/Max"] = f"{s.min():.1f} / {s.max():.1f} °C"
+    if rl is not None and df[rl.short].notna().any():
+        s = df[rl.short]
+        stats["Rücklauf Min/Max"] = f"{s.min():.1f} / {s.max():.1f} °C"
+    if vl is not None and rl is not None:
+        dt = (df[vl.short] - df[rl.short]).dropna()
+        if len(dt):
+            stats["Delta T (Median)"] = f"{dt.median():.1f} K"
+    if soll is not None and vl is not None:
+        diff = (df[vl.short] - df[soll.short]).dropna()
+        if len(diff):
+            stats["Ist − Soll (Median)"] = f"{diff.median():+.1f} K"
+    if pump is not None and df[pump.short].notna().any():
+        stats["Pumpe: Laufzeitanteil"] = f"{df[pump.short].mean() * 100:.0f} %"
+    return stats
+
+
+def circuit_figures(df: pd.DataFrame, kreis: Heizkreis, carpet_year: int, carpet_month: int) -> list[CircuitFigure]:
+    """Diagramme, die sich aus den in diesem Heizkreis tatsächlich vorhandenen Rollen ergeben."""
+    figs: list[CircuitFigure] = []
+    label = kreis.art
+    vl, rl = kreis.col("vl"), kreis.col("rl")
+    soll, pump = kreis.col("soll_vl"), kreis.col("pump")
+    aul, zul = kreis.extra_col("aul"), kreis.extra_col("zul")
+
+    if soll is not None and vl is not None:
+        figs.append(CircuitFigure(
+            "Regelgüte", fx.fig_soll_ist(df, soll.short, vl.short, f"{label}: Soll- vs. Ist-Vorlauf"),
+            "Vergleich der Soll-Vorlauftemperatur mit der gemessenen Ist-Vorlauftemperatur dieses Heizkreises.",
+        ))
+    if vl is not None and rl is not None:
+        figs.append(CircuitFigure(
+            "Vorlauf und Rücklauf", fx.fig_two_series(df, vl.short, "Vorlauf", rl.short, "Rücklauf",
+                                                       f"{label}: Vorlauf- und Rücklauftemperatur"),
+            "Zeitlicher Verlauf von Vor- und Rücklauftemperatur dieses Heizkreises.",
+        ))
+        figs.append(CircuitFigure(
+            "Temperaturspreizung (Delta T)", fx.fig_delta_t(df, [(label, vl.short, rl.short)],
+                                                             f"{label}: Temperaturspreizung (Delta T)"),
+            "Differenz zwischen Vor- und Rücklauf als Effizienzindikator der Wärmeübergabe.",
+        ))
+    if vl is not None:
+        series = df[vl.short].dropna()
+        if len(series) > 10:
+            lo, hi = float(series.quantile(0.01)), float(series.quantile(0.99))
+            figs.append(CircuitFigure(
+                "Carpetplot Vorlauf", fx.fig_carpet(df, vl.short, carpet_year, carpet_month,
+                                                     f"{label}: Vorlauftemp. {carpet_month:02d}/{carpet_year}",
+                                                     zmin=lo, zmax=hi),
+                "Farbcodierter Tagesverlauf der Vorlauftemperatur im gewählten Monat (Farbskala: 1.–99. Perzentil).",
+            ))
+    if pump is not None:
+        monthly = pd.DataFrame({label: df[pump.short].resample("MS").sum() * STEP_HOURS})
+        if monthly[label].sum() > 0:
+            figs.append(CircuitFigure(
+                "Pumpenlaufzeit", fx.fig_pump_runtime(monthly, f"{label}: Laufzeit der Pumpe (Monatswerte)"),
+                "Monatliche Betriebsstunden der Umwälzpumpe; 720 h entsprechen Dauerbetrieb.",
+            ))
+    if aul is not None and zul is not None:
+        figs.append(CircuitFigure(
+            "Außenluft und Zuluft", fx.fig_two_series(df, aul.short, "Außenluft", zul.short, "Zuluft",
+                                                       f"{label}: Außenluft- und Zulufttemperatur"),
+            "Zeitlicher Verlauf von Außenluft- und Zulufttemperatur der zugehörigen RLT-Anlage.",
+        ))
+    return figs

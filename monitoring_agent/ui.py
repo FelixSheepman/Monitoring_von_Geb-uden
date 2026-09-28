@@ -6,6 +6,9 @@ import pandas as pd
 import streamlit as st
 
 from .assessment import assessment_texts, sensor_overview, theory_vs_practice
+from .buildings import GEBAEUDE, HEIZKREISE, N_HEIZKREISE, find_gebaeude
+from .building_diagram import svg_overview
+from .circuit_analysis import circuit_figures, circuit_quality, circuit_stats
 from .comparison import agreement_summary, compare_table1
 from .process import (OUTLOOK, STATUS_FAIL, STATUS_INFO, STATUS_NA, STATUS_OK, agent_profile,
                       agent_variants, chapter_map, chart_types, load_research_questions, overall_summary,
@@ -41,6 +44,70 @@ def render_data_extras(report) -> None:
                          width="stretch", hide_index=True)
             st.caption("Heizperiode: 1.10. bis 30.4., Sommerperiode: 1.6. bis 31.8. Erfüllt heißt: mindestens 80 % der Tage "
                        "haben Messdaten.")
+
+
+# ----------------------------------------------------------------------------- Gebaeude und Heizkreise
+
+def render_heizkreise(report, carpet_year: int, carpet_month: int) -> None:
+    st.subheader("Gebäude und Heizkreise")
+    st.write(
+        f"Die Anlage besteht aus **{N_HEIZKREISE} eigenständigen Heizkreisen** (jeweils mit eigenem Vor- und "
+        "Rücklauf) in 4 Gebäuden; ein Gebäude kann mehrere Heizkreise besitzen. Der feste Bericht in den übrigen "
+        "Tabs zeigt immer den gesamten Datensatz. Hier lässt sich stattdessen ein einzelner Heizkreis auswählen: "
+        "Gebäude anklicken, um seine Heizkreise zu sehen, dann einen Heizkreis wählen für Datenprüfung, Kennzahlen "
+        "und Diagramme nur für diesen Kreis."
+    )
+    st.markdown(svg_overview(st.session_state.get("selected_kreis")), unsafe_allow_html=True)
+
+    cols = st.columns(len(GEBAEUDE))
+    for col, geb in zip(cols, GEBAEUDE):
+        with col:
+            with st.container(border=True):
+                st.markdown(f"##### <span style='color:{geb.farbe}'>■</span> {geb.name}", unsafe_allow_html=True)
+                st.caption(f"{len(geb.kreise)} Heizkreis" + ("" if len(geb.kreise) == 1 else "e"))
+                for k in geb.kreise:
+                    active = st.session_state.get("selected_kreis") == k.zone
+                    if st.button(f"{'✅ ' if active else ''}{k.nr}. {k.short}", key=f"pick_{k.zone}",
+                                width="stretch", type="primary" if active else "secondary"):
+                        st.session_state["selected_kreis"] = None if active else k.zone
+                        st.rerun()
+
+    sel = st.session_state.get("selected_kreis")
+    if sel is None:
+        st.info("Kein Heizkreis ausgewählt. Die übrigen Tabs zeigen weiterhin den Gesamtbericht (Kap. 6) mit allen "
+                "Abbildungen.")
+        return
+
+    if st.button("⤫ Auswahl aufheben (zum Gesamtbericht)"):
+        st.session_state["selected_kreis"] = None
+        st.rerun()
+
+    kreis = HEIZKREISE[sel]
+    geb = find_gebaeude(sel)
+    st.divider()
+    st.markdown(f"### {geb.name} – Heizkreis {kreis.nr}: {kreis.art}")
+
+    stats = circuit_stats(report.df, kreis)
+    if stats:
+        cols = st.columns(len(stats))
+        for c, (label, value) in zip(cols, stats.items()):
+            c.metric(label, value)
+
+    qdf = circuit_quality(report.quality_df, kreis)
+    if len(qdf):
+        st.markdown("**Datenprüfung dieses Heizkreises**")
+        st.dataframe(_colored(qdf, "Plausibilität", {"Plausibel": "#C6EFCE", "Auffällig!": "#FFC7CE"}),
+                     width="stretch", hide_index=True)
+
+    figs = circuit_figures(report.df, kreis, carpet_year, carpet_month)
+    if not figs:
+        st.warning("Für diesen Heizkreis liegen keine darstellbaren Messreihen vor.")
+    for fig in figs:
+        st.plotly_chart(fig.figure, width="stretch", key=f"kreis_{kreis.zone}_{fig.title}")
+        st.caption(fig.caption)
+        st.divider()
+    st.caption("Diese Ansicht ergänzt den festen Bericht aus den übrigen Tabs und verändert ihn nicht. Ausgeschlossene "
+               "Werte (Tab Datenprüfung) sind auch hier bereits nicht berücksichtigt.")
 
 
 # ----------------------------------------------------------------------------- Bewertung (Kap. 6.5)

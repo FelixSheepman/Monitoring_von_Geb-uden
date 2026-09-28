@@ -34,8 +34,8 @@ from monitoring_agent.report import build_report
 from monitoring_agent.settings import FEATURE_LABELS, Settings, Thresholds
 from monitoring_agent.process import Ctx, evaluate_criteria, optimization_hints
 from monitoring_agent.structure import STEPS
-from monitoring_agent.ui import (render_assessment, render_chapter8, render_data_extras, render_process,
-                                 render_research)
+from monitoring_agent.ui import (render_assessment, render_chapter8, render_data_extras, render_heizkreise,
+                                 render_process, render_research)
 from monitoring_agent.word_export import export_chapter8_docx, export_docx
 
 st.set_page_config(page_title="Monitoring KI-Agent", layout="wide", page_icon="📊")
@@ -252,6 +252,8 @@ crit = evaluate_criteria(ctx)
 hints = optimization_hints(crit, ctx, thresholds.fbh_limit)
 
 tab_names = ["🔍 Datenprüfung", "📈 Abbildungen", "🧠 Auswertung"]
+if settings.show_buildings:
+    tab_names.append("🏢 Gebäude")
 if settings.show_assessment:
     tab_names.append("🏁 Bewertung")
 if settings.show_comparison:
@@ -412,6 +414,10 @@ with tabs["🧠 Auswertung"]:
         for blk in savings_explanations(df_full, thresholds):
             with st.expander(blk.heading, expanded=blk.heading.startswith(("Maßnahme", "Gesamt"))):
                 st.write(blk.text)
+
+if settings.show_buildings:
+    with tabs["🏢 Gebäude"]:
+        render_heizkreise(report, int(carpet_year), int(carpet_month))
 
 if settings.show_assessment:
     with tabs["🏁 Bewertung"]:
