@@ -123,7 +123,12 @@ def fig_carpet(df: pd.DataFrame, value_col: str, year: int, month: int, title: s
 
 
 CARPET_GRANULARITIES = ("Jahr", "Monat", "Woche", "Tag")
+MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni",
+              "Juli", "August", "September", "Oktober", "November", "Dezember"]
 _WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+# Schriftgroesse der Zell-Beschriftung je Granularitaet: wenige, breite Spalten (Woche) vertragen groessere
+# Schrift als viele, schmale (Monat); bei Tag ist die Zelle nach der Drehung schmal, aber sehr hoch.
+_ANNOTATION_FONT_SIZE = {"Woche": 11, "Monat": 9, "Tag": 9}
 
 
 def carpet_window(anchor: pd.Timestamp, granularity: str) -> tuple[pd.Timestamp, pd.Timestamp]:
@@ -203,7 +208,10 @@ def fig_carpet_window(df: pd.DataFrame, value_col: str, granularity: str, anchor
     if use_annotate:
         apivot = sub.pivot_table(index="Zeit", columns="Spalte", values=annotate_col, aggfunc="mean") \
             .sort_index().reindex(columns=col_order)
-        heat["text"], heat["texttemplate"], heat["textfont"] = apivot.values, "%{text:.0f}", dict(size=8)
+        # Eine Nachkommastelle wie im Tooltip - der tatsaechliche Messwert, nicht auf ganze Grad gerundet.
+        heat["text"] = apivot.values
+        heat["texttemplate"] = "%{text:.1f}"
+        heat["textfont"] = dict(size=_ANNOTATION_FONT_SIZE.get(granularity, 9), color="#111111")
         hover += f"<br>{annotate_label}: " + "%{text:.1f} " + annotate_unit
     heat["hovertemplate"] = hover + "<extra></extra>"
 
@@ -220,6 +228,9 @@ def fig_carpet_window(df: pd.DataFrame, value_col: str, granularity: str, anchor
     if granularity == "Tag":
         fig.update_yaxes(showticklabels=False)
         fig.update_layout(height=260)
+    elif use_annotate:
+        # Genug Hoehe fuer die 96 Uhrzeit-Zeilen, sonst ist die Zahl in der Zelle nicht mehr lesbar.
+        fig.update_layout(height=980)
     return fig
 
 

@@ -91,9 +91,10 @@ with st.sidebar:
         use_sample = st.checkbox("Beispieldatensatz verwenden (Messdaten 2024–2026)", value=True)
 
     st.divider()
-    st.header("Carpetplot-Auflösung")
-    carpet_granularity = st.selectbox(
-        "Zeitfenster", list(fx.CARPET_GRANULARITIES), index=1,
+    st.header("📅 Carpetplot-Zeitfenster")
+    st.caption("Gilt für Abbildung 5/6, den Carpetplot je Heizkreis (Tab „Gebäude“) und dessen Vorauswahl im Explorer.")
+    carpet_granularity = st.radio(
+        "Ansicht", list(fx.CARPET_GRANULARITIES), index=1,
         help="Jede Zelle zeigt immer einen einzelnen 15-Minuten-Messwert, ohne Glättung – Jahr/Woche/Tag "
              "zoomen nur das Zeitfenster, nicht die Genauigkeit. Bei Woche und Tag steht zusätzlich die "
              "Außentemperatur in jeder Zelle (Zusammenhang Vorlauf/Außentemperatur, siehe Abbildung 5).",
@@ -103,7 +104,7 @@ with st.sidebar:
         carpet_month, carpet_day = 2, 1
     elif carpet_granularity == "Monat":
         carpet_year = st.number_input("Jahr", min_value=2020, max_value=2035, value=2025, step=1)
-        carpet_month = st.number_input("Monat", min_value=1, max_value=12, value=2, step=1)
+        carpet_month = fx.MONTH_NAMES.index(st.selectbox("Monat", fx.MONTH_NAMES, index=1)) + 1
         carpet_day = 1
     else:
         label = "ein beliebiger Tag in der Woche" if carpet_granularity == "Woche" else "Tag"
@@ -356,6 +357,9 @@ with tabs["📈 Abbildungen"]:
         st.caption("Rote Rauten markieren erkannte Anomalien: " + " · ".join(
             f"{k}: {v}" for k, v in report.anomaly_counts.items()))
     st.caption("Die Nummerierung folgt der Hausarbeit: Abbildung 1 ist der Messdatenkopf (Tab Datenprüfung), die Diagramme beginnen bei Abbildung 2.")
+    _carpet_label = fx.carpet_period_label(carpet_granularity, pd.Timestamp(int(carpet_year), int(carpet_month), int(carpet_day)))
+    st.info(f"📅 Zeitfenster der Carpetplots (Abbildung 5/6) aktuell: **{carpet_granularity} – {_carpet_label}**. "
+            "Ändern: Seitenleiste **📅 Carpetplot-Zeitfenster**.")
     for number, entry in enumerate(report.figures, start=2):
         st.plotly_chart(entry.figure, width="stretch", key=entry.key)
         st.caption(f"**Abbildung {number}: {entry.title}.** {entry.caption}")
@@ -545,7 +549,7 @@ if settings.show_explorer:
             elif gran == "Monat":
                 cy_, cm = st.columns(2)
                 year = cy_.number_input("Jahr", 2020, 2035, int(df_full.index.min().year) + 1, key="exp_year")
-                month = cm.number_input("Monat", 1, 12, 2, key="exp_month")
+                month = fx.MONTH_NAMES.index(cm.selectbox("Monat", fx.MONTH_NAMES, index=1, key="exp_month")) + 1
                 anchor = date(int(year), int(month), 1)
             else:
                 anchor = st.date_input("Ein beliebiger Tag darin" if gran == "Woche" else "Tag",

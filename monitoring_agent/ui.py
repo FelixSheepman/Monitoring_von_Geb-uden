@@ -10,6 +10,7 @@ from .buildings import GEBAEUDE, HEIZKREISE, N_HEIZKREISE, find_gebaeude
 from .building_diagram import svg_overview
 from .circuit_analysis import circuit_figures, circuit_quality, circuit_stats
 from .comparison import agreement_summary, compare_table1
+from .figures import carpet_period_label
 from .process import (OUTLOOK, STATUS_FAIL, STATUS_INFO, STATUS_NA, STATUS_OK, agent_profile,
                       agent_variants, chapter_map, chart_types, load_research_questions, overall_summary,
                       research_answers, step_report, step_summary, tool_comparison)
@@ -99,6 +100,8 @@ def render_heizkreise(report, carpet_granularity: str, carpet_anchor) -> None:
         st.dataframe(_colored(qdf, "Plausibilität", {"Plausibel": "#C6EFCE", "Auffällig!": "#FFC7CE"}),
                      width="stretch", hide_index=True)
 
+    _label = carpet_period_label(carpet_granularity, pd.Timestamp(carpet_anchor))
+    st.caption(f"📅 Carpetplot-Zeitfenster: **{carpet_granularity} – {_label}** (Seitenleiste ändern).")
     figs = circuit_figures(report.df, kreis, carpet_granularity, carpet_anchor)
     if not figs:
         st.warning("Für diesen Heizkreis liegen keine darstellbaren Messreihen vor.")
