@@ -17,6 +17,7 @@ import pandas as pd
 from . import figures as fx
 from .buildings import Heizkreis
 from .extras import STEP_HOURS
+from .settings import Thresholds
 
 
 @dataclass
@@ -59,26 +60,47 @@ def circuit_stats(df: pd.DataFrame, kreis: Heizkreis) -> dict[str, str]:
 AUL_COLUMN = "RLT KL01 Außenluft"  # einzige Aussentemperatur im Datensatz, gilt fuer die gesamte Anlage
 
 
-def circuit_figures(df: pd.DataFrame, kreis: Heizkreis, carpet_granularity: str, carpet_anchor: pd.Timestamp) -> list[CircuitFigure]:
+def _component_limit(kreis: Heizkreis, th: Thresholds) -> tuple[float, str] | None:
+    """Zulaessige Vorlauftemperatur je Komponenten-Art (Annahme, siehe settings.Thresholds); fuer die
+    RLT-Anlage (kein Heizkoerper/keine Fussbodenheizung im eigentlichen Sinn) gibt es keinen Wert."""
+    if "Fußbodenheizung" in kreis.art:
+        return th.fbh_limit, "Zulässige Vorlauftemp. (Fußbodenheizung)"
+    if "RLT" in kreis.art:
+        return None
+    return th.heizkoerper_limit, "Zulässige Vorlauftemp. (Heizkörper)"
+
+
+def circuit_figures(df: pd.DataFrame, kreis: Heizkreis, carpet_granularity: str, carpet_anchor: pd.Timestamp,
+                    th: Thresholds | None = None) -> list[CircuitFigure]:
     """Diagramme, die sich aus den in diesem Heizkreis tatsächlich vorhandenen Rollen ergeben.
     `carpet_granularity` (Jahr/Monat/Woche/Tag) und `carpet_anchor` legen das Zeitfenster des Carpetplots
-    fest (siehe figures.carpet_window)."""
+    fest (siehe figures.carpet_window). `th` liefert die zulässige Vorlauftemperatur, die als Grenzlinie
+    in die Vorlauf-Diagramme eingezeichnet wird (siehe _component_limit)."""
+    th = th or Thresholds()
     figs: list[CircuitFigure] = []
     label = kreis.art
     vl, rl = kreis.col("vl"), kreis.col("rl")
     soll, pump = kreis.col("soll_vl"), kreis.col("pump")
     aul, zul = kreis.extra_col("aul"), kreis.extra_col("zul")
+    limit = _component_limit(kreis, th)
+    limit_note = (f" Die rote gestrichelte Linie ist die zulässige Vorlauftemperatur dieser Komponente "
+                 f"({limit[0]:.0f} °C, Annahme – im Einstellungsmenü anpassbar).") if limit else ""
 
     if soll is not None and vl is not None:
+        fig = fx.fig_soll_ist(df, soll.short, vl.short, f"{label}: Soll- vs. Ist-Vorlauf")
+        if limit:
+            fx.add_component_limit(fig, *limit)
         figs.append(CircuitFigure(
-            "Regelgüte", fx.fig_soll_ist(df, soll.short, vl.short, f"{label}: Soll- vs. Ist-Vorlauf"),
-            "Vergleich der Soll-Vorlauftemperatur mit der gemessenen Ist-Vorlauftemperatur dieses Heizkreises.",
+            "Regelgüte", fig,
+            "Vergleich der Soll-Vorlauftemperatur mit der gemessenen Ist-Vorlauftemperatur dieses Heizkreises." + limit_note,
         ))
     if vl is not None and rl is not None:
+        fig = fx.fig_two_series(df, vl.short, "Vorlauf", rl.short, "Rücklauf", f"{label}: Vorlauf- und Rücklauftemperatur")
+        if limit:
+            fx.add_component_limit(fig, *limit)
         figs.append(CircuitFigure(
-            "Vorlauf und Rücklauf", fx.fig_two_series(df, vl.short, "Vorlauf", rl.short, "Rücklauf",
-                                                       f"{label}: Vorlauf- und Rücklauftemperatur"),
-            "Zeitlicher Verlauf von Vor- und Rücklauftemperatur dieses Heizkreises.",
+            "Vorlauf und Rücklauf", fig,
+            "Zeitlicher Verlauf von Vor- und Rücklauftemperatur dieses Heizkreises." + limit_note,
         ))
         figs.append(CircuitFigure(
             "Temperaturspreizung (Delta T)", fx.fig_delta_t(df, [(label, vl.short, rl.short)],

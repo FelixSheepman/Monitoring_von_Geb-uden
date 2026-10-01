@@ -143,6 +143,11 @@ with st.sidebar:
             aktiv_schwelle_vl=st.slider("Aktiver Heizbetrieb ab Vorlauf (°C)", 15.0, 40.0, th_defaults.aktiv_schwelle_vl, 1.0),
             delta_t_min=st.slider("Mindest-Spreizung Delta T (K)", 1.0, 10.0, th_defaults.delta_t_min, 0.5),
             fbh_limit=st.slider("FBH-Auslegungsgrenze Vorlauf (°C)", 30.0, 50.0, th_defaults.fbh_limit, 1.0),
+            heizkoerper_limit=st.slider("Heizkörper-Auslegungsgrenze Vorlauf (°C)", 40.0, 95.0,
+                                        th_defaults.heizkoerper_limit, 1.0,
+                                        help="Zulässige Vorlauftemperatur für Heizkörper/statische Heizflächen "
+                                             "(nicht Fußbodenheizung); erscheint als Grenzlinie in den "
+                                             "Vorlauf-Diagrammen. Mit Anlagendokumentation abzugleichen."),
             heat_avoid_share=st.slider("Vermeidbarer Wärmeanteil oberhalb Heizgrenze", 0.0, 1.0, th_defaults.heat_avoid_share, 0.05),
             rlt_night_hours=st.slider("RLT-Nachtabsenkung (Stunden/Nacht)", 0.0, 12.0, th_defaults.rlt_night_hours, 1.0),
             rlt_night_reduction=st.slider("Ventilatorstrom-Reduktion in der Nacht", 0.0, 1.0, th_defaults.rlt_night_reduction, 0.05),
@@ -437,7 +442,7 @@ with tabs["🧠 Auswertung"]:
 
 if settings.show_buildings:
     with tabs["🏢 Gebäude"]:
-        render_heizkreise(report, carpet_granularity, date(int(carpet_year), int(carpet_month), int(carpet_day)))
+        render_heizkreise(report, carpet_granularity, date(int(carpet_year), int(carpet_month), int(carpet_day)), thresholds)
 
 if settings.show_assessment:
     with tabs["🏁 Bewertung"]:

@@ -170,19 +170,29 @@ def carpet_period_label(granularity: str, anchor: pd.Timestamp) -> str:
     return f"{anchor:%d.%m.%Y}"
 
 
+NIGHT_BOUNDARY_COLOR = "#FFD23F"  # kraeftiges Gelb - gegenueber jeder Heatmap-Farbe (auch Blau) klar erkennbar
+
+
 def _night_shapes(granularity: str) -> list[dict]:
-    """Graue Flaechen fuer die Nachtzeit (siehe NIGHT_START/NIGHT_END); bei normaler Ausrichtung (Uhrzeit auf
-    der y-Achse) zwei waagerechte Baender (ueber Mitternacht hinweg), bei "Tag" (Uhrzeit auf der x-Achse)
-    zwei senkrechte."""
-    common = dict(fillcolor="rgba(30,40,70,0.16)", line_width=0, layer="above")
+    """Markierung der Nachtzeit (siehe NIGHT_START/NIGHT_END): eine dunkle Abdunkelung der Flaeche (wirkt
+    unabhaengig von der darunterliegenden Heatmap-Farbe, auch auf blauen/kalten Zellen) plus zwei kraeftige
+    gestrichelte Grenzlinien an Nachtbeginn/-ende, statt einer kaum sichtbaren Farbtoenung. Bei normaler
+    Ausrichtung (Uhrzeit auf der y-Achse) waagerecht (ueber Mitternacht hinweg), bei "Tag" (Uhrzeit auf der
+    x-Achse) senkrecht."""
+    fill = dict(fillcolor="rgba(0,0,0,0.30)", line_width=0, layer="above")
+    boundary = dict(line=dict(color=NIGHT_BOUNDARY_COLOR, width=2.6, dash="dash"), layer="above")
     if granularity == "Tag":
         return [
-            dict(type="rect", xref="x", yref="y domain", x0="00:00", x1=NIGHT_END, y0=0, y1=1, **common),
-            dict(type="rect", xref="x", yref="y domain", x0=NIGHT_START, x1="23:45", y0=0, y1=1, **common),
+            dict(type="rect", xref="x", yref="y domain", x0="00:00", x1=NIGHT_END, y0=0, y1=1, **fill),
+            dict(type="rect", xref="x", yref="y domain", x0=NIGHT_START, x1="23:45", y0=0, y1=1, **fill),
+            dict(type="line", xref="x", yref="y domain", x0=NIGHT_END, x1=NIGHT_END, y0=0, y1=1, **boundary),
+            dict(type="line", xref="x", yref="y domain", x0=NIGHT_START, x1=NIGHT_START, y0=0, y1=1, **boundary),
         ]
     return [
-        dict(type="rect", xref="x domain", yref="y", x0=0, x1=1, y0="00:00", y1=NIGHT_END, **common),
-        dict(type="rect", xref="x domain", yref="y", x0=0, x1=1, y0=NIGHT_START, y1="23:45", **common),
+        dict(type="rect", xref="x domain", yref="y", x0=0, x1=1, y0="00:00", y1=NIGHT_END, **fill),
+        dict(type="rect", xref="x domain", yref="y", x0=0, x1=1, y0=NIGHT_START, y1="23:45", **fill),
+        dict(type="line", xref="x domain", yref="y", x0=0, x1=1, y0=NIGHT_END, y1=NIGHT_END, **boundary),
+        dict(type="line", xref="x domain", yref="y", x0=0, x1=1, y0=NIGHT_START, y1=NIGHT_START, **boundary),
     ]
 
 
@@ -222,14 +232,15 @@ def _add_carpet_overlays(fig: go.Figure, granularity: str, zmin: float | None, z
             bgcolor="rgba(255,255,255,0.75)", visible=True,
         )
     fig.update_layout(margin=dict(t=90, b=95))
+    n_night_shapes = len(_night_shapes(granularity))  # 2 Flaechen + 2 Grenzlinien
+    night_on = {f"shapes[{i}].visible": True for i in range(n_night_shapes)} | {"annotations[0].visible": True}
+    night_off = {f"shapes[{i}].visible": False for i in range(n_night_shapes)} | {"annotations[0].visible": False}
     buttons = [dict(
         type="buttons", direction="left", showactive=False, x=0, y=1.16, xanchor="left", yanchor="top",
         pad=dict(r=4, t=2),
         buttons=[
-            dict(label="🌓 Tag/Nacht ein", method="relayout",
-                args=[{"shapes[0].visible": True, "shapes[1].visible": True, "annotations[0].visible": True}]),
-            dict(label="Tag/Nacht aus", method="relayout",
-                args=[{"shapes[0].visible": False, "shapes[1].visible": False, "annotations[0].visible": False}]),
+            dict(label="🌓 Tag/Nacht ein", method="relayout", args=[night_on]),
+            dict(label="Tag/Nacht aus", method="relayout", args=[night_off]),
         ])]
     if has_legend:
         buttons.append(dict(
@@ -395,6 +406,23 @@ def fig_duration_curve(curve: pd.DataFrame, markers: dict[float, tuple[float, fl
                             arrowhead=0, ax=28, ay=-18, font=dict(size=10, color=VERMILLION))
     fig.update_layout(**_base_layout(title, "Thermische Leistung (kW)", "Betriebsstunden (absteigend sortiert)"))
     fig.update_layout(showlegend=False)
+    return fig
+
+
+LIMIT_LINE_COLOR = "#9B1B30"  # dunkles Rot: deutlich von Soll/Ist/Zone-Farben unterscheidbar, "Warnung"
+
+
+def add_component_limit(fig: go.Figure, limit: float, label: str, unit: str = "°C",
+                        color: str = LIMIT_LINE_COLOR) -> go.Figure:
+    """Zeichnet eine klar sichtbare, dick gestrichelte Grenzlinie bei `limit` (z.B. die zulaessige
+    Vorlauftemperatur einer Heizungskomponente) auf ein bestehendes Zeitreihen- oder Streudiagramm, mit
+    Beschriftung. So ist sofort erkennbar, wenn ein Messwert diese Grenze ueberschreitet."""
+    fig.add_hline(
+        y=limit, line_color=color, line_width=2.8, line_dash="dash",
+        annotation_text=f"{label}: {limit:.0f} {unit}", annotation_position="top left",
+        annotation_font=dict(size=10.5, color=color, family="Arial Black, Arial, sans-serif"),
+        annotation_bgcolor="rgba(255,255,255,0.78)",
+    )
     return fig
 
 

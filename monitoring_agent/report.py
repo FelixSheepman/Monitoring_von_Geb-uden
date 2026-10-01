@@ -96,16 +96,23 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
 
     figs.append(FigureEntry(
         "regelguete_stat_heizung", "Regelgüte Stat. Heizung Geb.06: Soll- vs. Ist-Vorlauf",
-        fx.fig_soll_ist(df_disp, "Stat. Heizung Geb.06 VL (Soll)", "Stat. Heizung Geb.06 VL (Ist)",
-                         "Regelgüte Stat. Heizung Geb.06: Soll- vs. Ist-Vorlauf"),
-        "Vergleich der systemseitig berechneten Soll-Vorlauftemperatur mit der gemessenen Ist-Vorlauftemperatur.",
+        fx.add_component_limit(
+            fx.fig_soll_ist(df_disp, "Stat. Heizung Geb.06 VL (Soll)", "Stat. Heizung Geb.06 VL (Ist)",
+                            "Regelgüte Stat. Heizung Geb.06: Soll- vs. Ist-Vorlauf"),
+            th.heizkoerper_limit, "Zulässige Vorlauftemp. (Heizkörper)"),
+        "Vergleich der systemseitig berechneten Soll-Vorlauftemperatur mit der gemessenen Ist-Vorlauftemperatur. "
+        "Die rote gestrichelte Linie ist die zulässige Vorlauftemperatur dieser Heizkörper-Komponente "
+        f"({th.heizkoerper_limit:.0f} °C, Annahme – im Einstellungsmenü anpassbar).",
     ))
 
     figs.append(FigureEntry(
         "heizkurve", "Heizkurve: Außentemp. vs. Vorlauftemp. Geb.06",
-        fx.fig_heating_curve(df, "RLT KL01 Außenluft", "Stat. Heizung Geb.06 VL (Ist)",
-                              "Heizkurve: Außentemp. vs. Vorlauftemp. Geb.06"),
-        "Streudiagramm der Ist-Vorlauftemperatur in Abhängigkeit von der Außentemperatur mit Regressionslinie.",
+        fx.add_component_limit(
+            fx.fig_heating_curve(df, "RLT KL01 Außenluft", "Stat. Heizung Geb.06 VL (Ist)",
+                                 "Heizkurve: Außentemp. vs. Vorlauftemp. Geb.06"),
+            th.heizkoerper_limit, "Zulässige Vorlauftemp. (Heizkörper)"),
+        "Streudiagramm der Ist-Vorlauftemperatur in Abhängigkeit von der Außentemperatur mit Regressionslinie "
+        f"und der zulässigen Vorlauftemperatur dieser Komponente ({th.heizkoerper_limit:.0f} °C, Annahme).",
     ))
 
     carpet_anchor = pd.Timestamp(year=carpet_year, month=carpet_month, day=carpet_day)
@@ -134,20 +141,28 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
 
     figs.append(FigureEntry(
         "regelguete_fbh", "Regelgüte FBH Geb.06: Soll- vs. Ist-Vorlauf",
-        fx.fig_soll_ist(df_disp, "FBH Geb.06 VL (Soll)", "FBH Geb.06 VL (Ist)",
-                         "Regelgüte FBH Geb.06: Soll- vs. Ist-Vorlauf"),
-        "Vergleich der Soll- mit der Ist-Vorlauftemperatur der Fußbodenheizung Gebäude 06.",
+        fx.add_component_limit(
+            fx.fig_soll_ist(df_disp, "FBH Geb.06 VL (Soll)", "FBH Geb.06 VL (Ist)",
+                            "Regelgüte FBH Geb.06: Soll- vs. Ist-Vorlauf"),
+            th.fbh_limit, "Zulässige Vorlauftemp. (Fußbodenheizung)"),
+        "Vergleich der Soll- mit der Ist-Vorlauftemperatur der Fußbodenheizung Gebäude 06. Die rote gestrichelte "
+        f"Linie ist die Auslegungsgrenze dieses Niedertemperatursystems ({th.fbh_limit:.0f} °C, Annahme – "
+        "im Einstellungsmenü anpassbar).",
     ))
 
     figs.append(FigureEntry(
         "zonenvergleich", "Hydraulischer Abgleich: Zonenvergleich Vorlauftemperaturen",
-        fx.fig_zone_comparison(df_disp, [
+        fx.add_component_limit(fx.add_component_limit(fx.fig_zone_comparison(df_disp, [
             ("Stat. Heizung Geb.06", "Stat. Heizung Geb.06 VL (Ist)"),
             ("FBH Geb.06", "FBH Geb.06 VL (Ist)"),
             ("FBH Geb.08 KI-Räume", "FBH Geb.08 KI-Räume VL"),
             ("FBH Geb.08 Intensivpflege", "FBH Geb.08 Intensivpflege VL"),
         ], "Hydraulischer Abgleich: Zonenvergleich Vorlauftemperaturen"),
-        "Vergleich der Ist-Vorlauftemperaturen von vier Heizkreisen zur Prüfung des hydraulischen Abgleichs.",
+            th.fbh_limit, "Zulässig Fußbodenheizung"), th.heizkoerper_limit, "Zulässig Heizkörper"),
+        "Vergleich der Ist-Vorlauftemperaturen von vier Heizkreisen zur Prüfung des hydraulischen Abgleichs. Die "
+        f"beiden gestrichelten Linien sind die zulässigen Vorlauftemperaturen für Fußbodenheizung ({th.fbh_limit:.0f} °C) "
+        f"und Heizkörper ({th.heizkoerper_limit:.0f} °C, beide Annahmen) – so ist sofort erkennbar, wenn eine "
+        "FBH-Zone in den Heizkörper-Bereich hineinreicht.",
     ))
 
     figs.append(FigureEntry(

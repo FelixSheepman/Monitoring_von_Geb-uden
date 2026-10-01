@@ -49,7 +49,7 @@ def render_data_extras(report) -> None:
 
 # ----------------------------------------------------------------------------- Gebaeude und Heizkreise
 
-def render_heizkreise(report, carpet_granularity: str, carpet_anchor) -> None:
+def render_heizkreise(report, carpet_granularity: str, carpet_anchor, th=None) -> None:
     st.subheader("Heizungskonzept und Heizkreise")
     st.write(
         f"Die Anlage besteht aus **{N_HEIZKREISE} eigenständigen Heizkreisen** (jeweils mit eigenem Vor- und "
@@ -110,7 +110,7 @@ def render_heizkreise(report, carpet_granularity: str, carpet_anchor) -> None:
 
     _label = carpet_period_label(carpet_granularity, pd.Timestamp(carpet_anchor))
     st.caption(f"📅 Carpetplot-Zeitfenster: **{carpet_granularity} – {_label}** (Seitenleiste ändern).")
-    figs = circuit_figures(report.df, kreis, carpet_granularity, carpet_anchor)
+    figs = circuit_figures(report.df, kreis, carpet_granularity, carpet_anchor, th)
     if not figs:
         st.warning("Für diesen Heizkreis liegen keine darstellbaren Messreihen vor.")
     for fig in figs:

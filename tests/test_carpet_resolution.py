@@ -141,7 +141,7 @@ def test_circuit_carpet_uses_the_chosen_granularity_and_annotates_with_site_outd
 def test_carpet_has_toggleable_night_and_operating_state_overlays(df, granularity):
     fig = fx.fig_carpet_window(df, "RLT primär VL", granularity, pd.Timestamp("2025-02-13"), "t",
                                zmin=20, zmax=65, annotate_col="RLT KL01 Außenluft")
-    assert len(fig.layout.shapes) == 2 and all(s.visible for s in fig.layout.shapes)  # 2 Nachtbaender, standardmaessig an
+    assert len(fig.layout.shapes) == 4 and all(s.visible for s in fig.layout.shapes)  # 2 Flaechen + 2 Grenzlinien, standardmaessig an
     assert len(fig.layout.annotations) == 2 and all(a.visible for a in fig.layout.annotations)
     assert "Nachtzeit" in fig.layout.annotations[0].text
     for label in ("Aus", "Nachtabsenkung", "Normalbetrieb", "Volllast"):
@@ -157,8 +157,11 @@ def test_carpet_has_toggleable_night_and_operating_state_overlays(df, granularit
 def test_night_shapes_wrap_around_midnight_in_the_expected_orientation():
     for granularity, axis_attr in (("Monat", "yref"), ("Woche", "yref"), ("Jahr", "yref"), ("Tag", "xref")):
         shapes = fx._night_shapes(granularity)
-        assert len(shapes) == 2
-        bounds = [(s["x0"], s["x1"]) if axis_attr == "xref" else (s["y0"], s["y1"]) for s in shapes]
+        assert len(shapes) == 4  # 2 Flaechen (rect) + 2 kraeftige Grenzlinien (line), je einmal pro Uebergang
+        assert sum(s["type"] == "rect" for s in shapes) == 2
+        assert sum(s["type"] == "line" for s in shapes) == 2
+        bounds = [(s["x0"], s["x1"]) if axis_attr == "xref" else (s["y0"], s["y1"])
+                 for s in shapes if s["type"] == "rect"]
         assert ("00:00", fx.NIGHT_END) in bounds and (fx.NIGHT_START, "23:45") in bounds
 
 
@@ -174,3 +177,44 @@ def test_operating_bands_cover_the_full_range_without_gaps():
 def test_overlays_are_skipped_for_the_empty_window_fallback(df):
     fig = fx.fig_carpet_window(df, "RLT primär VL", "Tag", pd.Timestamp("2030-01-01"), "t", zmin=20, zmax=65)
     assert len(fig.layout.shapes) == 0 and len(fig.layout.annotations) == 0
+
+
+# ----------------------------------------------------------------------------- Zulaessige Vorlauftemperatur (Grenzlinie)
+
+def test_add_component_limit_draws_a_visible_dashed_line_with_label():
+    import plotly.graph_objects as go
+    fig = go.Figure(go.Scatter(x=[1, 2, 3], y=[10, 20, 30]))
+    fx.add_component_limit(fig, 70.0, "Zulässig Heizkörper")
+    assert len(fig.layout.shapes) == 1
+    shape = fig.layout.shapes[0]
+    assert shape.y0 == shape.y1 == 70.0 and shape.line.dash == "dash" and shape.line.width >= 2
+    assert len(fig.layout.annotations) == 1 and "Zulässig Heizkörper: 70 °C" in fig.layout.annotations[0].text
+
+
+@needs_data
+def test_circuit_figures_mark_the_component_limit_by_kind(df):
+    from monitoring_agent.circuit_analysis import circuit_figures
+    from monitoring_agent.settings import Thresholds
+    th = Thresholds(fbh_limit=40.0, heizkoerper_limit=70.0)
+    rep = build_report(df)
+
+    fbh = circuit_figures(rep.df, HEIZKREISE["fbh_geb06"], "Monat", pd.Timestamp("2025-02-01"), th)
+    vr = next(f for f in fbh if f.title == "Vorlauf und Rücklauf")
+    assert vr.figure.layout.shapes[0].y0 == 40.0
+    assert "40 °C" in vr.caption
+
+    hk = circuit_figures(rep.df, HEIZKREISE["stat_heizung_geb06"], "Monat", pd.Timestamp("2025-02-01"), th)
+    vr_hk = next(f for f in hk if f.title == "Vorlauf und Rücklauf")
+    assert vr_hk.figure.layout.shapes[0].y0 == 70.0
+
+    rlt = circuit_figures(rep.df, HEIZKREISE["rlt_primaer"], "Monat", pd.Timestamp("2025-02-01"), th)
+    vr_rlt = next(f for f in rlt if f.title == "Vorlauf und Rücklauf")
+    assert len(vr_rlt.figure.layout.shapes) == 0  # RLT ist weder Heizkoerper noch Fussbodenheizung
+
+
+@needs_data
+def test_report_zonenvergleich_marks_both_component_limits(df):
+    rep = build_report(df)
+    zv = next(f for f in rep.figures if f.key == "zonenvergleich")
+    y_values = sorted(s.y0 for s in zv.figure.layout.shapes)
+    assert y_values == [40.0, 70.0]  # Standard-Grenzwerte fuer FBH und Heizkoerper, beide eingezeichnet

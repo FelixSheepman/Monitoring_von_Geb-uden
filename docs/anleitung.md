@@ -150,7 +150,8 @@ Unter **🎚️ Schwellenwerte & Annahmen** stellt ihr ein, wie die Auswertung r
 | Heizgrenze Außentemperatur | Ab dieser Tagesmitteltemperatur sollte nicht mehr geheizt werden | 15 °C |
 | Aktiver Heizbetrieb ab Vorlauf | Ab dieser Vorlauftemperatur gilt ein Kreis als „in Betrieb“ | 25 °C |
 | Mindest-Spreizung Delta T | Darunter gilt die Spreizung zwischen Vor- und Rücklauf als zu gering | 2 K |
-| FBH-Auslegungsgrenze Vorlauf | Übliche Obergrenze für Fußbodenheizungen | 40 °C |
+| FBH-Auslegungsgrenze Vorlauf | Übliche Obergrenze für Fußbodenheizungen; erscheint als rote Grenzlinie in den Vorlauf-Diagrammen von FBH-Kreisen | 40 °C |
+| Heizkörper-Auslegungsgrenze Vorlauf | Zulässige Vorlauftemperatur für Heizkörper/statische Heizflächen; erscheint als rote Grenzlinie in deren Vorlauf-Diagrammen | 70 °C |
 | Vermeidbarer Wärmeanteil oberhalb Heizgrenze | Anteil des Wärmeverbrauchs an warmen Tagen, der sich vermeiden ließe | 50 % |
 | RLT-Nachtabsenkung (Stunden/Nacht) | Länge der Absenkung der Lüftung | 8 h |
 | Ventilatorstrom-Reduktion in der Nacht | Um wie viel der Ventilatorstrom in dieser Zeit sinkt | 50 % |
@@ -210,7 +211,7 @@ Ein Carpetplot zeigt einen Messwert als Farbfläche. Jede Zelle ist immer **ein 
 Im Juli liegt die Vorlauftemperatur bei etwa 22 bis 29 °C, also nahe der Raumtemperatur. Das Heizregister wird dann vermutlich nicht mit Heizwasser versorgt. Im Februar ist außerhalb der Störphase kein Tag-Nacht-Unterschied zu sehen, eine Nachtabsenkung fehlt. Um das für einen einzelnen Tag zu bestätigen, stellt das Zeitfenster auf „Tag“ und wählt z. B. den 10. Februar: Ihr seht alle 96 Messpunkte dieses Tages nebeneinander, mit Außentemperatur in jeder Zelle.
 
 5. **Zum besseren Einschätzen der Werte** hat jeder Carpetplot zwei Schaltflächen-Paare direkt über dem Diagramm (Teil des Plotly-Diagramms selbst, kein Streamlit-Neuladen nötig):
-   - **🌓 Tag/Nacht ein/aus**: blendet eine graue Fläche über die Nachtstunden (22–6 Uhr, eine übliche Annahme für Nachtabsenkung) ein oder aus. So seht ihr auf einen Blick, ob eine auffällige Farbe nachts oder tagsüber liegt, ohne jede Zeile einzeln ablesen zu müssen.
+   - **🌓 Tag/Nacht ein/aus**: blendet die Nachtstunden (22–6 Uhr, eine übliche Annahme für Nachtabsenkung) ein oder aus – als abgedunkelte Fläche mit zwei kräftigen gelb gestrichelten Grenzlinien an Nachtbeginn und -ende, gut erkennbar unabhängig von der jeweiligen Heatmap-Farbe darunter. So seht ihr auf einen Blick, ob eine auffällige Farbe nachts oder tagsüber liegt, ohne jede Zeile einzeln ablesen zu müssen.
    - **🎨 Betriebszustände ein/aus**: blendet eine Legende unter dem Diagramm ein oder aus, die die Farbskala in Worte übersetzt – z. B. „Aus (< 27 °C)“, „Nachtabsenkung (27–38 °C)“, „Normalbetrieb (38–58 °C)“, „Volllast (> 58 °C)“. Die Farbe jedes Punkts in der Legende entspricht der Farbe an der jeweiligen Stelle der Farbskala, sodass auch ohne Heizungstechnik-Kenntnisse sofort erkennbar ist, wie ausgelastet die Anlage gerade ist.
    Beide Paare lassen sich unabhängig voneinander und je Diagramm einzeln ein- oder ausblenden. **Wichtig:** Die vier Begriffe und ihre Grenzen (15 %/40 %/85 % der Farbskala) sind eine beispielhafte, grobe Einteilung zur Orientierung – keine Herstellerangabe und keine feste Regel. Wollt ihr andere Grenzen oder Begriffe, ändert `OPERATING_BANDS` in `monitoring_agent/figures.py`.
 
@@ -360,6 +361,20 @@ Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vo
 4. Die zugehörige Auswertung im Tab **🧠 Auswertung** nennt die konkreten Zahlen aus eurem Datensatz.
 
 **Wichtig:** Die tatsächliche Leistung des vorhandenen Wärmeerzeugers steht nicht in den Messdaten. Die vier Referenzpunkte sind Vorschläge für mögliche Auslegungsgrenzen, keine Aussage darüber, welches Gerät tatsächlich verbaut ist oder sein sollte – das ist mit der Anlagendokumentation bzw. dem Betreiber abzugleichen.
+
+### 6.15 Beispiel: Erkennen, wenn eine Komponente zu heiß angefahren wird
+
+**Ziel:** Auf einen Blick sehen, ob die Vorlauftemperatur einer Heizungskomponente über ihre zulässige Grenze hinausgeht.
+
+1. Öffnet **🎚️ Schwellenwerte & Annahmen**. Dort stehen zwei Grenzwerte: **FBH-Auslegungsgrenze Vorlauf** (Standard 40 °C, für Fußbodenheizungen) und **Heizkörper-Auslegungsgrenze Vorlauf** (Standard 70 °C, für Heizkörper/statische Heizflächen). Beide sind Annahmen – stellt sie auf die Werte aus eurer Anlagendokumentation.
+2. In jedem Diagramm, das eine Vorlauftemperatur über die Zeit oder gegen die Außentemperatur zeigt, erscheint jetzt eine **dicke rote gestrichelte Linie** bei diesem Grenzwert, beschriftet mit Wert und Komponente. Das betrifft:
+   - **Abbildung 3 und 7** (Regelgüte Soll-/Ist-Vorlauf, je mit der passenden Grenze für Heizkörper bzw. FBH),
+   - **Abbildung 4** (Heizkurve),
+   - **Abbildung 8** (Zonenvergleich) – hier stehen **beide** Grenzlinien gleichzeitig, damit sofort auffällt, wenn eine Fußbodenheizungs-Zone in den Heizkörper-Bereich hineinreicht,
+   - den Diagrammen „Regelgüte“ und „Vorlauf und Rücklauf“ eines einzelnen Heizkreises im Tab **🏢 Gebäude** (mit der zur Komponente passenden Grenze; die RLT-Anlage hat keine eigene Grenze, da sie weder Heizkörper noch Fußbodenheizung ist).
+3. Überschreitet die blaue Vorlaufkurve die rote Linie deutlich und dauerhaft, ist das ein Hinweis auf eine zu hoch eingestellte Regelung oder eine falsche Zuordnung der Komponente – ein Befund, den ihr mit dem Betreiber klären solltet.
+
+**Hinweis:** Die Grenzlinien sind immer eingeblendet (kein Ein-/Ausblenden nötig, da es sich um eine sicherheitsrelevante Information handelt). Carpetplots zeigen keine Grenzlinie, weil die Temperatur dort als Farbe und nicht als Linie dargestellt wird – benutzt dafür die „Betriebszustände“-Legende aus 6.3.
 
 ## 7. Ergebnisse richtig lesen
 

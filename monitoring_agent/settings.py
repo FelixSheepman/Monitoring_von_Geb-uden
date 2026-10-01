@@ -11,6 +11,7 @@ class Thresholds:
     aktiv_schwelle_vl: float = 25.0
     delta_t_min: float = 2.0
     fbh_limit: float = 40.0
+    heizkoerper_limit: float = 70.0
     heat_avoid_share: float = 0.5
     rlt_night_hours: float = 8.0
     rlt_night_reduction: float = 0.5
