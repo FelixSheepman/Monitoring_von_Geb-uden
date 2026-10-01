@@ -123,6 +123,17 @@ def fig_carpet(df: pd.DataFrame, value_col: str, year: int, month: int, title: s
 
 
 CARPET_GRANULARITIES = ("Jahr", "Monat", "Woche", "Tag")
+# Nachtfenster fuer die Tag/Nacht-Markierung in Carpetplots - ueblicher Zeitraum einer Nachtabsenkung;
+# Annahme, in der Anlagendokumentation ggf. anzupassen.
+NIGHT_START, NIGHT_END = "22:00", "06:00"
+# Betriebszustaende als Anteile der Farbskala [zmin, zmax] - nur Beispielhaft/Orientierung, keine
+# Herstellerangabe. Reihenfolge = aufsteigend; jede Stufe deckt [vorherige Grenze, eigene Grenze).
+OPERATING_BANDS = (
+    (0.15, "Aus"),
+    (0.40, "Nachtabsenkung"),
+    (0.85, "Normalbetrieb"),
+    (1.00, "Volllast"),
+)
 MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni",
               "Juli", "August", "September", "Oktober", "November", "Dezember"]
 _WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
@@ -157,6 +168,78 @@ def carpet_period_label(granularity: str, anchor: pd.Timestamp) -> str:
         start, _ = carpet_window(anchor, "Woche")
         return f"KW {start.isocalendar().week} ({start:%d.%m.%Y})"
     return f"{anchor:%d.%m.%Y}"
+
+
+def _night_shapes(granularity: str) -> list[dict]:
+    """Graue Flaechen fuer die Nachtzeit (siehe NIGHT_START/NIGHT_END); bei normaler Ausrichtung (Uhrzeit auf
+    der y-Achse) zwei waagerechte Baender (ueber Mitternacht hinweg), bei "Tag" (Uhrzeit auf der x-Achse)
+    zwei senkrechte."""
+    common = dict(fillcolor="rgba(30,40,70,0.16)", line_width=0, layer="above")
+    if granularity == "Tag":
+        return [
+            dict(type="rect", xref="x", yref="y domain", x0="00:00", x1=NIGHT_END, y0=0, y1=1, **common),
+            dict(type="rect", xref="x", yref="y domain", x0=NIGHT_START, x1="23:45", y0=0, y1=1, **common),
+        ]
+    return [
+        dict(type="rect", xref="x domain", yref="y", x0=0, x1=1, y0="00:00", y1=NIGHT_END, **common),
+        dict(type="rect", xref="x domain", yref="y", x0=0, x1=1, y0=NIGHT_START, y1="23:45", **common),
+    ]
+
+
+def _operating_bands_text(zmin: float, zmax: float, unit: str) -> str:
+    """Baut die Legende der Betriebszustaende (Farbe + Wort + Wertebereich) als ein HTML-faehiger
+    Annotation-Text, mit Farben passend zur Heatmap-Farbskala (RdYlBu_r)."""
+    import plotly.colors as pc
+    lo_frac = 0.0
+    parts = []
+    for hi_frac, label in OPERATING_BANDS:
+        mid = (lo_frac + hi_frac) / 2
+        color = pc.sample_colorscale("RdYlBu_r", [mid])[0]
+        lo_val, hi_val = zmin + lo_frac * (zmax - zmin), zmin + hi_frac * (zmax - zmin)
+        bounds = f"< {hi_val:.0f} {unit}" if lo_frac == 0 else (
+            f"> {lo_val:.0f} {unit}" if hi_frac == 1 else f"{lo_val:.0f}–{hi_val:.0f} {unit}")
+        parts.append(f'<span style="color:{color}">⬤</span> <b>{label}</b> ({bounds})')
+        lo_frac = hi_frac
+    return "   ".join(parts)
+
+
+def _add_carpet_overlays(fig: go.Figure, granularity: str, zmin: float | None, zmax: float | None, unit: str) -> None:
+    """Fuegt die Tag/Nacht-Markierung und die Betriebszustaende-Legende hinzu, je mit eigenem Button
+    ein-/ausblendbar (direkt im Diagramm, keine Streamlit-Interaktion noetig)."""
+    for shape in _night_shapes(granularity):
+        fig.add_shape(**shape, visible=True)
+    fig.add_annotation(
+        text=f"grau hinterlegt: Nachtzeit ({NIGHT_START}–{NIGHT_END} Uhr, Annahme)",
+        xref="paper", yref="paper", x=0, y=-0.14, xanchor="left", yanchor="top",
+        showarrow=False, font=dict(size=10, color="#5b6b7b"), visible=True,
+    )
+    has_legend = zmin is not None and zmax is not None
+    if has_legend:
+        fig.add_annotation(
+            text=_operating_bands_text(zmin, zmax, unit),
+            xref="paper", yref="paper", x=0.5, y=-0.22, xanchor="center", yanchor="top",
+            showarrow=False, font=dict(size=10.5, color="#1a1a1a"), align="center",
+            bgcolor="rgba(255,255,255,0.75)", visible=True,
+        )
+    fig.update_layout(margin=dict(t=90, b=95))
+    buttons = [dict(
+        type="buttons", direction="left", showactive=False, x=0, y=1.16, xanchor="left", yanchor="top",
+        pad=dict(r=4, t=2),
+        buttons=[
+            dict(label="🌓 Tag/Nacht ein", method="relayout",
+                args=[{"shapes[0].visible": True, "shapes[1].visible": True, "annotations[0].visible": True}]),
+            dict(label="Tag/Nacht aus", method="relayout",
+                args=[{"shapes[0].visible": False, "shapes[1].visible": False, "annotations[0].visible": False}]),
+        ])]
+    if has_legend:
+        buttons.append(dict(
+            type="buttons", direction="left", showactive=False, x=0.45, y=1.16, xanchor="left", yanchor="top",
+            pad=dict(r=4, t=2),
+            buttons=[
+                dict(label="🎨 Betriebszustände ein", method="relayout", args=[{"annotations[1].visible": True}]),
+                dict(label="Betriebszustände aus", method="relayout", args=[{"annotations[1].visible": False}]),
+            ]))
+    fig.update_layout(updatemenus=buttons)
 
 
 def fig_carpet_window(df: pd.DataFrame, value_col: str, granularity: str, anchor: pd.Timestamp, title: str,
@@ -227,10 +310,13 @@ def fig_carpet_window(df: pd.DataFrame, value_col: str, granularity: str, anchor
     fig.update_layout(hovermode="closest", legend=None)
     if granularity == "Tag":
         fig.update_yaxes(showticklabels=False)
-        fig.update_layout(height=260)
+        fig.update_layout(height=340)  # Platz fuer die Tag/Nacht- und Betriebszustaende-Legende unter dem Streifen
     elif use_annotate:
         # Genug Hoehe fuer die 96 Uhrzeit-Zeilen, sonst ist die Zahl in der Zelle nicht mehr lesbar.
         fig.update_layout(height=980)
+    else:
+        fig.update_layout(height=560)  # Jahr: keine Zellbeschriftung, aber Platz fuer die Legenden unter dem Plot
+    _add_carpet_overlays(fig, granularity, zmin, zmax, unit)
     return fig
 
 

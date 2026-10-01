@@ -132,3 +132,45 @@ def test_circuit_carpet_uses_the_chosen_granularity_and_annotates_with_site_outd
     carp = next(f for f in figs if f.title == "Carpetplot Vorlauf")
     assert carp.figure.data[0].text is not None
     assert len(carp.figure.data[0].x) == 96
+
+
+# ----------------------------------------------------------------------------- Tag/Nacht- und Betriebszustaende-Overlay
+
+@needs_data
+@pytest.mark.parametrize("granularity", ["Jahr", "Monat", "Woche", "Tag"])
+def test_carpet_has_toggleable_night_and_operating_state_overlays(df, granularity):
+    fig = fx.fig_carpet_window(df, "RLT primär VL", granularity, pd.Timestamp("2025-02-13"), "t",
+                               zmin=20, zmax=65, annotate_col="RLT KL01 Außenluft")
+    assert len(fig.layout.shapes) == 2 and all(s.visible for s in fig.layout.shapes)  # 2 Nachtbaender, standardmaessig an
+    assert len(fig.layout.annotations) == 2 and all(a.visible for a in fig.layout.annotations)
+    assert "Nachtzeit" in fig.layout.annotations[0].text
+    for label in ("Aus", "Nachtabsenkung", "Normalbetrieb", "Volllast"):
+        assert label in fig.layout.annotations[1].text
+    assert len(fig.layout.updatemenus) == 2  # ein Button-Paar je Overlay, unabhaengig voneinander ein-/ausblendbar
+    # jeder Button steuert nur seine eigene Gruppe (kein Button schaltet beide Overlays gleichzeitig)
+    night_args = fig.layout.updatemenus[0].buttons[0].args[0]
+    assert all(k.startswith("shapes[") or k.startswith("annotations[0]") for k in night_args)
+    legend_args = fig.layout.updatemenus[1].buttons[0].args[0]
+    assert all(k.startswith("annotations[1]") for k in legend_args)
+
+
+def test_night_shapes_wrap_around_midnight_in_the_expected_orientation():
+    for granularity, axis_attr in (("Monat", "yref"), ("Woche", "yref"), ("Jahr", "yref"), ("Tag", "xref")):
+        shapes = fx._night_shapes(granularity)
+        assert len(shapes) == 2
+        bounds = [(s["x0"], s["x1"]) if axis_attr == "xref" else (s["y0"], s["y1"]) for s in shapes]
+        assert ("00:00", fx.NIGHT_END) in bounds and (fx.NIGHT_START, "23:45") in bounds
+
+
+def test_operating_bands_cover_the_full_range_without_gaps():
+    text = fx._operating_bands_text(20.0, 65.0, "°C")
+    assert text.count("°C") == 4
+    assert "< 27" in text and "> 58" in text  # erste/letzte Stufe offen, dazwischen lueckenlos
+    for lo, hi in (("27", "38"), ("38", "58")):
+        assert f"{lo}–{hi} °C" in text
+
+
+@needs_data
+def test_overlays_are_skipped_for_the_empty_window_fallback(df):
+    fig = fx.fig_carpet_window(df, "RLT primär VL", "Tag", pd.Timestamp("2030-01-01"), "t", zmin=20, zmax=65)
+    assert len(fig.layout.shapes) == 0 and len(fig.layout.annotations) == 0

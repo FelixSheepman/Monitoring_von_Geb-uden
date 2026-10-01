@@ -209,7 +209,12 @@ Ein Carpetplot zeigt einen Messwert als Farbfläche. Jede Zelle ist immer **ein 
 
 Im Juli liegt die Vorlauftemperatur bei etwa 22 bis 29 °C, also nahe der Raumtemperatur. Das Heizregister wird dann vermutlich nicht mit Heizwasser versorgt. Im Februar ist außerhalb der Störphase kein Tag-Nacht-Unterschied zu sehen, eine Nachtabsenkung fehlt. Um das für einen einzelnen Tag zu bestätigen, stellt das Zeitfenster auf „Tag“ und wählt z. B. den 10. Februar: Ihr seht alle 96 Messpunkte dieses Tages nebeneinander, mit Außentemperatur in jeder Zelle.
 
-Dieselbe Auflösung gibt es auch im Tab **🏢 Gebäude** für den Carpetplot jedes einzelnen Heizkreises (siehe 6.13).
+5. **Zum besseren Einschätzen der Werte** hat jeder Carpetplot zwei Schaltflächen-Paare direkt über dem Diagramm (Teil des Plotly-Diagramms selbst, kein Streamlit-Neuladen nötig):
+   - **🌓 Tag/Nacht ein/aus**: blendet eine graue Fläche über die Nachtstunden (22–6 Uhr, eine übliche Annahme für Nachtabsenkung) ein oder aus. So seht ihr auf einen Blick, ob eine auffällige Farbe nachts oder tagsüber liegt, ohne jede Zeile einzeln ablesen zu müssen.
+   - **🎨 Betriebszustände ein/aus**: blendet eine Legende unter dem Diagramm ein oder aus, die die Farbskala in Worte übersetzt – z. B. „Aus (< 27 °C)“, „Nachtabsenkung (27–38 °C)“, „Normalbetrieb (38–58 °C)“, „Volllast (> 58 °C)“. Die Farbe jedes Punkts in der Legende entspricht der Farbe an der jeweiligen Stelle der Farbskala, sodass auch ohne Heizungstechnik-Kenntnisse sofort erkennbar ist, wie ausgelastet die Anlage gerade ist.
+   Beide Paare lassen sich unabhängig voneinander und je Diagramm einzeln ein- oder ausblenden. **Wichtig:** Die vier Begriffe und ihre Grenzen (15 %/40 %/85 % der Farbskala) sind eine beispielhafte, grobe Einteilung zur Orientierung – keine Herstellerangabe und keine feste Regel. Wollt ihr andere Grenzen oder Begriffe, ändert `OPERATING_BANDS` in `monitoring_agent/figures.py`.
+
+Dieselbe Auflösung und dieselben Overlays gibt es auch im Tab **🏢 Gebäude** für den Carpetplot jedes einzelnen Heizkreises (siehe 6.13).
 
 **Tipp:** Im Explorer könnt ihr die Farbskala per Regler verschieben, um kleine Unterschiede sichtbar zu machen.
 
