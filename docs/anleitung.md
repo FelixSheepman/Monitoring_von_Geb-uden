@@ -9,7 +9,7 @@ Beim Technischen Monitoring von Nichtwohngebäuden fallen immer wiederkehrende A
 **Was ihr bekommt:**
 
 - eine **Datenprüfung** aller Messspalten (plausibel oder auffällig, mit Begründung),
-- den **Messdatenkopf** (Abbildung 1) und **13 weitere Abbildungen** (Verläufe, Heizkurve, Carpetplots, Zonenvergleich, Spreizung, Tagesverbräuche, Pumpenlaufzeiten, Datenverfügbarkeit); die Nummerierung entspricht der Hausarbeit,
+- den **Messdatenkopf** (Abbildung 1) und **14 weitere Abbildungen** (Verläufe, Heizkurve, Carpetplots, Zonenvergleich je Systemtyp, Spreizung, Tagesverbräuche, Pumpenlaufzeiten, Datenverfügbarkeit, Dauerlinie); die Nummerierung entspricht der Hausarbeit mit agentenseitigen Ergänzungen,
 - **Auswertungstexte**, deren Zahlen live aus euren Daten berechnet werden,
 - eine Abschätzung des **Energieeinsparpotenzials** und eine **Bewertung** aller Befunde nach Schweregrad mit Empfehlungen,
 - **Kontrollkriterien** für jeden Zwischenschritt mit automatischer Prüfung und einen **Entwurf für Kapitel 8** (Vergleich mit der manuellen Auswertung),
@@ -106,7 +106,7 @@ Zeitraum, Anzahl der Messpunkte, Zahl der plausiblen und der auffälligen Spalte
 | Tab | Inhalt |
 |---|---|
 | **🔍 Datenprüfung** | Tabelle 1: jede Spalte mit Min, Max, Fehlwerten, Status und Begründung. Darunter der Messdatenkopf (Abbildung 1), die Datenabdeckung der Heiz- und Sommerperioden und die Auswahl, ob erkannte fehlerhafte Werte in die Auswertung einfließen (siehe 6.12) |
-| **📈 Abbildungen** | Alle Diagramme (Abbildung 2 bis 15) mit Erklärung und der passenden Auswertung darunter |
+| **📈 Abbildungen** | Alle Diagramme (Abbildung 2 bis 16) mit Erklärung und der passenden Auswertung darunter |
 | **🧠 Auswertung** | Die Auswertungstexte, darunter die Tabelle der nicht berücksichtigten Werte mit Begründung, dazu das Energieeinsparpotenzial mit Erläuterung |
 | **🏢 Gebäude** | Netzplan der Heizungsanlage (Vorlauf/Rücklauf, Pumpen, Sollwerte, Zähler, laienverständlich beschriftet); Gebäude anklicken, Heizkreis wählen: eigene Datenprüfung, Kennzahlen und Diagramme nur für diesen Kreis (siehe 6.13) |
 | **🏁 Bewertung** | Alle Befunde nach Schweregrad eingestuft, mit Regel, Kennzahl und Empfehlung (Kap. 6.5), dazu Zusammenfassung und Empfehlungen (Kap. 6.6) |
@@ -355,7 +355,7 @@ Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vo
 
 **Ziel:** Abschätzen, wie oft die volle Heizleistung wirklich gebraucht wird, als Grundlage für die Auslegung eines Spitzenlast- oder Zusatzheizgeräts.
 
-1. Tab **📈 Abbildungen**, ganz unten **Abbildung 15: Geordnete Dauerlinie der thermischen Leistung**. Die Leistung wird aus der Differenz zweier aufeinanderfolgender Zählerstände des Wärmemengenzählers geteilt durch die tatsächlich verstrichene Zeit berechnet (keine feste 15-Minuten-Annahme, damit Lücken im Datensatz die Kurve nicht verfälschen) und absteigend sortiert dargestellt.
+1. Tab **📈 Abbildungen**, ganz unten **Abbildung 16: Geordnete Dauerlinie der thermischen Leistung**. Die Leistung wird aus der Differenz zweier aufeinanderfolgender Zählerstände des Wärmemengenzählers geteilt durch die tatsächlich verstrichene Zeit berechnet (keine feste 15-Minuten-Annahme, damit Lücken im Datensatz die Kurve nicht verfälschen) und absteigend sortiert dargestellt.
 2. Die x-Achse zeigt die Betriebsstunden, in denen eine Leistung erreicht oder überschritten wird – ganz links steht die Spitzenleistung, die nur sehr kurz anliegt, nach rechts hin sinkt die Kurve auf die meiste Zeit über gültige Grundlast.
 3. Vier Referenzpunkte sind eingezeichnet (1 %, 5 %, 10 %, 20 % der Betriebsstunden) mit der jeweiligen Leistung. Ein Grundlastgerät, das auf einen dieser Werte ausgelegt ist, deckt die übrige Zeit allein ab; nur für die selteneren Spitzen oberhalb davon wäre ein Zusatz- bzw. Spitzenlastgerät nötig.
 4. Die zugehörige Auswertung im Tab **🧠 Auswertung** nennt die konkreten Zahlen aus eurem Datensatz.
@@ -370,11 +370,22 @@ Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vo
 2. In jedem Diagramm, das eine Vorlauftemperatur über die Zeit oder gegen die Außentemperatur zeigt, erscheint jetzt eine **dicke rote gestrichelte Linie** bei diesem Grenzwert, beschriftet mit Wert und Komponente. Das betrifft:
    - **Abbildung 3 und 7** (Regelgüte Soll-/Ist-Vorlauf, je mit der passenden Grenze für Heizkörper bzw. FBH),
    - **Abbildung 4** (Heizkurve),
-   - **Abbildung 8** (Zonenvergleich) – hier stehen **beide** Grenzlinien gleichzeitig, damit sofort auffällt, wenn eine Fußbodenheizungs-Zone in den Heizkörper-Bereich hineinreicht,
+   - **Abbildung 8 und 9** (Zonenvergleich, siehe 6.16),
    - den Diagrammen „Regelgüte“ und „Vorlauf und Rücklauf“ eines einzelnen Heizkreises im Tab **🏢 Gebäude** (mit der zur Komponente passenden Grenze; die RLT-Anlage hat keine eigene Grenze, da sie weder Heizkörper noch Fußbodenheizung ist).
 3. Überschreitet die blaue Vorlaufkurve die rote Linie deutlich und dauerhaft, ist das ein Hinweis auf eine zu hoch eingestellte Regelung oder eine falsche Zuordnung der Komponente – ein Befund, den ihr mit dem Betreiber klären solltet.
 
 **Hinweis:** Die Grenzlinien sind immer eingeblendet (kein Ein-/Ausblenden nötig, da es sich um eine sicherheitsrelevante Information handelt). Carpetplots zeigen keine Grenzlinie, weil die Temperatur dort als Farbe und nicht als Linie dargestellt wird – benutzt dafür die „Betriebszustände“-Legende aus 6.3.
+
+### 6.16 Beispiel: Hydraulischer Abgleich nur innerhalb desselben Systemtyps
+
+**Ziel:** Beim Zonenvergleich nur Heizkreise vergleichen, die auch vergleichbar sind.
+
+Fußbodenheizungen und Heizkörper sind absichtlich auf unterschiedliche Vorlauftemperaturen ausgelegt (siehe 6.15). Ein gemeinsames Diagramm beider Systemtypen würde beim hydraulischen Abgleich nur den erwarteten Niveauunterschied zeigen, nicht ob die Kreise *innerhalb* ihres Typs gleichmäßig versorgt werden. Deshalb gibt es zwei getrennte Diagramme:
+
+1. **Abbildung 8 – Zonenvergleich Fußbodenheizungen**: die drei FBH-Kreise (Geb.06, Geb.08 KI-Räume, Geb.08 Intensivpflege) auf einer Skala, mit der FBH-Grenzlinie.
+2. **Abbildung 9 – Zonenvergleich Heizkörperkreise**: die drei Heizkörperkreise (Stat. Heizung Geb.06, Heizung Geb.1/3, Heizung Lager Geb.2) auf einer eigenen Skala, mit der Heizkörper-Grenzlinie.
+
+Weicht innerhalb einer dieser beiden Gruppen eine Zone deutlich von den anderen ab, deutet das auf einen fehlerhaften hydraulischen Abgleich oder eine übersteuerte Mischerregelung in genau dieser Zone hin – unabhängig vom grundsätzlichen Temperaturunterschied zwischen FBH und Heizkörper.
 
 ## 7. Ergebnisse richtig lesen
 

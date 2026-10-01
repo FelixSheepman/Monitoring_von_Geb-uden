@@ -150,19 +150,33 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
         "im Einstellungsmenü anpassbar).",
     ))
 
+    # Hydraulischer Abgleich vergleicht, ob PARALLELE Kreise DESSELBEN Systemtyps gleichmaessig versorgt
+    # werden - Fussbodenheizung und Heizkoerper sind absichtlich auf unterschiedliche Vorlauftemperaturen
+    # ausgelegt, ein gemeinsamer Vergleich beider Typen in einem Diagramm waere kein Abgleich, sondern nur
+    # eine Bestaetigung des erwarteten Niveauunterschieds. Deshalb zwei getrennte Diagramme je Systemtyp.
     figs.append(FigureEntry(
-        "zonenvergleich", "Hydraulischer Abgleich: Zonenvergleich Vorlauftemperaturen",
-        fx.add_component_limit(fx.add_component_limit(fx.fig_zone_comparison(df_disp, [
-            ("Stat. Heizung Geb.06", "Stat. Heizung Geb.06 VL (Ist)"),
+        "zonenvergleich", "Hydraulischer Abgleich: Zonenvergleich Fußbodenheizungen",
+        fx.add_component_limit(fx.fig_zone_comparison(df_disp, [
             ("FBH Geb.06", "FBH Geb.06 VL (Ist)"),
             ("FBH Geb.08 KI-Räume", "FBH Geb.08 KI-Räume VL"),
             ("FBH Geb.08 Intensivpflege", "FBH Geb.08 Intensivpflege VL"),
-        ], "Hydraulischer Abgleich: Zonenvergleich Vorlauftemperaturen"),
-            th.fbh_limit, "Zulässig Fußbodenheizung"), th.heizkoerper_limit, "Zulässig Heizkörper"),
-        "Vergleich der Ist-Vorlauftemperaturen von vier Heizkreisen zur Prüfung des hydraulischen Abgleichs. Die "
-        f"beiden gestrichelten Linien sind die zulässigen Vorlauftemperaturen für Fußbodenheizung ({th.fbh_limit:.0f} °C) "
-        f"und Heizkörper ({th.heizkoerper_limit:.0f} °C, beide Annahmen) – so ist sofort erkennbar, wenn eine "
-        "FBH-Zone in den Heizkörper-Bereich hineinreicht.",
+        ], "Hydraulischer Abgleich: Zonenvergleich Fußbodenheizungen"), th.fbh_limit, "Zulässige Vorlauftemp. (Fußbodenheizung)"),
+        "Vergleich der Ist-Vorlauftemperaturen der drei Fußbodenheizungskreise zur Prüfung des hydraulischen "
+        f"Abgleichs – nur gleichartige Systeme auf einer Skala, damit Abweichungen zwischen den Zonen selbst "
+        f"auffallen und nicht vom grundsätzlich anderen Temperaturniveau eines Heizkörpersystems überdeckt werden. "
+        f"Die gestrichelte Linie ist die Auslegungsgrenze dieses Niedertemperatursystems ({th.fbh_limit:.0f} °C, Annahme).",
+    ))
+
+    figs.append(FigureEntry(
+        "zonenvergleich_heizkoerper", "Hydraulischer Abgleich: Zonenvergleich Heizkörperkreise",
+        fx.add_component_limit(fx.fig_zone_comparison(df_disp, [
+            ("Stat. Heizung Geb.06", "Stat. Heizung Geb.06 VL (Ist)"),
+            ("Heizung Geb.1/3", "Heizung Geb.1/3 VL"),
+            ("Heizung Lager Geb.2", "Heizung Lager Geb.2 VL"),
+        ], "Hydraulischer Abgleich: Zonenvergleich Heizkörperkreise"), th.heizkoerper_limit, "Zulässige Vorlauftemp. (Heizkörper)"),
+        "Vergleich der Ist-Vorlauftemperaturen der drei Heizkörperkreise (statische Heizflächen) zur Prüfung des "
+        f"hydraulischen Abgleichs unter sich – ebenfalls nur gleichartige Systeme auf einer Skala. Die gestrichelte "
+        f"Linie ist die zulässige Vorlauftemperatur dieser Komponentenart ({th.heizkoerper_limit:.0f} °C, Annahme).",
     ))
 
     figs.append(FigureEntry(
@@ -251,8 +265,10 @@ def _apply_anomalies(df: pd.DataFrame, figs: list[FigureEntry], th: Thresholds) 
     zeros("regelguete_stat_heizung", ["Stat. Heizung Geb.06 VL (Ist)", "Stat. Heizung Geb.06 VL (Soll)"],
           "Regelgüte Stat. Heizung")
     zeros("regelguete_fbh", ["FBH Geb.06 VL (Ist)", "FBH Geb.06 VL (Soll)"], "Regelgüte FBH")
-    zeros("zonenvergleich", ["Stat. Heizung Geb.06 VL (Ist)", "FBH Geb.06 VL (Ist)",
-                              "FBH Geb.08 KI-Räume VL", "FBH Geb.08 Intensivpflege VL"], "Zonenvergleich")
+    zeros("zonenvergleich", ["FBH Geb.06 VL (Ist)", "FBH Geb.08 KI-Räume VL", "FBH Geb.08 Intensivpflege VL"],
+          "Zonenvergleich FBH")
+    zeros("zonenvergleich_heizkoerper", ["Stat. Heizung Geb.06 VL (Ist)", "Heizung Geb.1/3 VL", "Heizung Lager Geb.2 VL"],
+          "Zonenvergleich Heizkörper")
 
     resets = an.meter_resets(df, "Zähler 019 – WMZ")
     counts["WMZ (Zählerrücksprung)"] = len(resets)

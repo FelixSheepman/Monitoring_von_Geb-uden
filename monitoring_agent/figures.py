@@ -196,45 +196,68 @@ def _night_shapes(granularity: str) -> list[dict]:
     ]
 
 
-def _operating_bands_text(zmin: float, zmax: float, unit: str) -> str:
-    """Baut die Legende der Betriebszustaende (Farbe + Wort + Wertebereich) als ein HTML-faehiger
-    Annotation-Text, mit Farben passend zur Heatmap-Farbskala (RdYlBu_r)."""
+def _operating_band_colors_and_bounds(zmin: float, zmax: float, unit: str) -> list[tuple[str, str, str]]:
+    """Je Betriebszustand: (Farbe passend zur Heatmap-Skala, Name, Wertebereich als Text)."""
     import plotly.colors as pc
     lo_frac = 0.0
-    parts = []
+    out = []
     for hi_frac, label in OPERATING_BANDS:
         mid = (lo_frac + hi_frac) / 2
         color = pc.sample_colorscale("RdYlBu_r", [mid])[0]
         lo_val, hi_val = zmin + lo_frac * (zmax - zmin), zmin + hi_frac * (zmax - zmin)
         bounds = f"< {hi_val:.0f} {unit}" if lo_frac == 0 else (
             f"> {lo_val:.0f} {unit}" if hi_frac == 1 else f"{lo_val:.0f}–{hi_val:.0f} {unit}")
-        parts.append(f'<span style="color:{color}">⬤</span> <b>{label}</b> ({bounds})')
+        out.append((color, label, bounds))
         lo_frac = hi_frac
-    return "   ".join(parts)
+    return out
+
+
+def _add_operating_bands_legend(fig: go.Figure, zmin: float, zmax: float, unit: str, y0: float, y1: float) -> None:
+    """Zeichnet die Betriebszustaende als Reihe ECHTER farbiger Kaestchen (eigene Shapes, nicht nur
+    eingefaerbte Schriftzeichen) mit fetter Beschriftung daneben - das faellt auf den ersten Blick auf,
+    auch neben einer bunten Heatmap. `y0`/`y1` (paper-Koordinaten) geben die Hoehe der Kaestchen vor."""
+    bands = _operating_band_colors_and_bounds(zmin, zmax, unit)
+    seg = 1.0 / len(bands)
+    for i, (color, label, bounds) in enumerate(bands):
+        x0 = i * seg + seg * 0.08
+        x1 = x0 + 0.028
+        fig.add_shape(type="rect", xref="paper", yref="paper", x0=x0, x1=x1, y0=y0, y1=y1,
+                     fillcolor=color, line=dict(color="#2a2a2a", width=1.2), visible=True)
+        fig.add_annotation(
+            text=f"<b>{label}</b><br>{bounds}", xref="paper", yref="paper",
+            x=x1 + 0.014, y=(y0 + y1) / 2, xanchor="left", yanchor="middle",
+            showarrow=False, font=dict(size=12, color="#1a1a1a"), align="left", visible=True,
+            bgcolor="rgba(255,255,255,0.9)", bordercolor="#2a2a2a", borderwidth=1, borderpad=3,
+        )
 
 
 def _add_carpet_overlays(fig: go.Figure, granularity: str, zmin: float | None, zmax: float | None, unit: str) -> None:
     """Fuegt die Tag/Nacht-Markierung und die Betriebszustaende-Legende hinzu, je mit eigenem Button
-    ein-/ausblendbar (direkt im Diagramm, keine Streamlit-Interaktion noetig)."""
-    for shape in _night_shapes(granularity):
+    ein-/ausblendbar (direkt im Diagramm, keine Streamlit-Interaktion noetig). Beide Legenden stehen in
+    einer eigens reservierten Zeile INNERHALB des Diagramms (Achsen-Domain verkleinert), nicht per
+    negativer paper-Koordinate unterhalb des Canvas - dort waeren sie je nach Diagrammgroesse
+    abgeschnitten oder nur als duenner, leicht zu uebersehender Textstreifen sichtbar."""
+    night_shapes = _night_shapes(granularity)
+    for shape in night_shapes:
         fig.add_shape(**shape, visible=True)
-    fig.add_annotation(
-        text=f"grau hinterlegt: Nachtzeit ({NIGHT_START}–{NIGHT_END} Uhr, Annahme)",
-        xref="paper", yref="paper", x=0, y=-0.14, xanchor="left", yanchor="top",
-        showarrow=False, font=dict(size=10, color="#5b6b7b"), visible=True,
-    )
+
     has_legend = zmin is not None and zmax is not None
+    reserved = 0.24 if has_legend else 0.11  # Anteil der Plotflaeche fuer die Legenden-Zeile(n)
+    fig.update_yaxes(domain=[reserved, 1])
+    fig.update_layout(margin=dict(t=90, b=26))
+
+    fig.add_annotation(
+        text=f"🌓 Grau + gelb gestrichelt = Nachtzeit ({NIGHT_START}–{NIGHT_END} Uhr, Annahme)",
+        xref="paper", yref="paper", x=0, y=reserved - 0.025, xanchor="left", yanchor="top",
+        showarrow=False, font=dict(size=12, color="#1a1a1a"), visible=True,
+        bgcolor="rgba(255,255,255,0.9)", bordercolor="#2a2a2a", borderwidth=1, borderpad=3,
+    )
     if has_legend:
-        fig.add_annotation(
-            text=_operating_bands_text(zmin, zmax, unit),
-            xref="paper", yref="paper", x=0.5, y=-0.22, xanchor="center", yanchor="top",
-            showarrow=False, font=dict(size=10.5, color="#1a1a1a"), align="center",
-            bgcolor="rgba(255,255,255,0.75)", visible=True,
-        )
-    fig.update_layout(margin=dict(t=90, b=95))
-    n_night_shapes = len(_night_shapes(granularity))  # 2 Flaechen + 2 Grenzlinien
-    night_on = {f"shapes[{i}].visible": True for i in range(n_night_shapes)} | {"annotations[0].visible": True}
-    night_off = {f"shapes[{i}].visible": False for i in range(n_night_shapes)} | {"annotations[0].visible": False}
+        _add_operating_bands_legend(fig, zmin, zmax, unit, y0=0.01, y1=reserved - 0.09)
+
+    n_night = len(night_shapes)  # 2 Flaechen + 2 Grenzlinien
+    night_on = {f"shapes[{i}].visible": True for i in range(n_night)} | {"annotations[0].visible": True}
+    night_off = {f"shapes[{i}].visible": False for i in range(n_night)} | {"annotations[0].visible": False}
     buttons = [dict(
         type="buttons", direction="left", showactive=False, x=0, y=1.16, xanchor="left", yanchor="top",
         pad=dict(r=4, t=2),
@@ -243,12 +266,19 @@ def _add_carpet_overlays(fig: go.Figure, granularity: str, zmin: float | None, z
             dict(label="Tag/Nacht aus", method="relayout", args=[night_off]),
         ])]
     if has_legend:
+        n_bands = len(OPERATING_BANDS)
+        legend_shape_idx = range(n_night, n_night + n_bands)
+        legend_ann_idx = range(1, 1 + n_bands)
+        legend_on = ({f"shapes[{i}].visible": True for i in legend_shape_idx}
+                    | {f"annotations[{i}].visible": True for i in legend_ann_idx})
+        legend_off = ({f"shapes[{i}].visible": False for i in legend_shape_idx}
+                     | {f"annotations[{i}].visible": False for i in legend_ann_idx})
         buttons.append(dict(
             type="buttons", direction="left", showactive=False, x=0.45, y=1.16, xanchor="left", yanchor="top",
             pad=dict(r=4, t=2),
             buttons=[
-                dict(label="🎨 Betriebszustände ein", method="relayout", args=[{"annotations[1].visible": True}]),
-                dict(label="Betriebszustände aus", method="relayout", args=[{"annotations[1].visible": False}]),
+                dict(label="🎨 Betriebszustände ein", method="relayout", args=[legend_on]),
+                dict(label="Betriebszustände aus", method="relayout", args=[legend_off]),
             ]))
     fig.update_layout(updatemenus=buttons)
 

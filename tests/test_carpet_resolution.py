@@ -141,17 +141,24 @@ def test_circuit_carpet_uses_the_chosen_granularity_and_annotates_with_site_outd
 def test_carpet_has_toggleable_night_and_operating_state_overlays(df, granularity):
     fig = fx.fig_carpet_window(df, "RLT primär VL", granularity, pd.Timestamp("2025-02-13"), "t",
                                zmin=20, zmax=65, annotate_col="RLT KL01 Außenluft")
-    assert len(fig.layout.shapes) == 4 and all(s.visible for s in fig.layout.shapes)  # 2 Flaechen + 2 Grenzlinien, standardmaessig an
-    assert len(fig.layout.annotations) == 2 and all(a.visible for a in fig.layout.annotations)
+    # 4 Nacht-Shapes (2 Flaechen + 2 Grenzlinien) + 4 echte farbige Kaestchen fuer die Betriebszustaende
+    assert len(fig.layout.shapes) == 8 and all(s.visible for s in fig.layout.shapes)
+    assert sum(s.type == "rect" and s.fillcolor and s.fillcolor.startswith("rgb(") for s in fig.layout.shapes) == 4
+    # 1 Nacht-Beschriftung + 4 Betriebszustands-Beschriftungen (je Kaestchen eine eigene, nicht ein Textblock)
+    assert len(fig.layout.annotations) == 5 and all(a.visible for a in fig.layout.annotations)
     assert "Nachtzeit" in fig.layout.annotations[0].text
-    for label in ("Aus", "Nachtabsenkung", "Normalbetrieb", "Volllast"):
-        assert label in fig.layout.annotations[1].text
+    labels = {"Aus", "Nachtabsenkung", "Normalbetrieb", "Volllast"}
+    found = {lbl for lbl in labels for a in fig.layout.annotations[1:] if lbl in a.text}
+    assert found == labels
     assert len(fig.layout.updatemenus) == 2  # ein Button-Paar je Overlay, unabhaengig voneinander ein-/ausblendbar
     # jeder Button steuert nur seine eigene Gruppe (kein Button schaltet beide Overlays gleichzeitig)
     night_args = fig.layout.updatemenus[0].buttons[0].args[0]
-    assert all(k.startswith("shapes[") or k.startswith("annotations[0]") for k in night_args)
+    assert all(k.startswith("shapes[0]") or k.startswith("shapes[1]") or k.startswith("shapes[2]")
+              or k.startswith("shapes[3]") or k.startswith("annotations[0]") for k in night_args)
     legend_args = fig.layout.updatemenus[1].buttons[0].args[0]
-    assert all(k.startswith("annotations[1]") for k in legend_args)
+    assert all(k.startswith("shapes[4]") or k.startswith("shapes[5]") or k.startswith("shapes[6]")
+              or k.startswith("shapes[7]") or k.startswith("annotations[1]") or k.startswith("annotations[2]")
+              or k.startswith("annotations[3]") or k.startswith("annotations[4]") for k in legend_args)
 
 
 def test_night_shapes_wrap_around_midnight_in_the_expected_orientation():
@@ -166,11 +173,12 @@ def test_night_shapes_wrap_around_midnight_in_the_expected_orientation():
 
 
 def test_operating_bands_cover_the_full_range_without_gaps():
-    text = fx._operating_bands_text(20.0, 65.0, "°C")
-    assert text.count("°C") == 4
-    assert "< 27" in text and "> 58" in text  # erste/letzte Stufe offen, dazwischen lueckenlos
-    for lo, hi in (("27", "38"), ("38", "58")):
-        assert f"{lo}–{hi} °C" in text
+    bands = fx._operating_band_colors_and_bounds(20.0, 65.0, "°C")
+    assert [label for _, label, _ in bands] == ["Aus", "Nachtabsenkung", "Normalbetrieb", "Volllast"]
+    bounds = [b for _, _, b in bands]
+    assert bounds[0] == "< 27 °C" and bounds[-1] == "> 58 °C"  # erste/letzte Stufe offen, dazwischen lueckenlos
+    assert bounds[1] == "27–38 °C" and bounds[2] == "38–58 °C"
+    assert len({color for color, _, _ in bands}) == 4  # jede Stufe eine eigene Farbe
 
 
 @needs_data
@@ -213,8 +221,18 @@ def test_circuit_figures_mark_the_component_limit_by_kind(df):
 
 
 @needs_data
-def test_report_zonenvergleich_marks_both_component_limits(df):
+def test_zonenvergleich_compares_only_same_type_components(df):
+    """Hydraulischer Abgleich vergleicht parallele Kreise DESSELBEN Systemtyps - FBH und Heizkoerper sind
+    absichtlich auf unterschiedliche Vorlauftemperaturen ausgelegt und gehoeren daher auf getrennte Diagramme."""
     rep = build_report(df)
-    zv = next(f for f in rep.figures if f.key == "zonenvergleich")
-    y_values = sorted(s.y0 for s in zv.figure.layout.shapes)
-    assert y_values == [40.0, 70.0]  # Standard-Grenzwerte fuer FBH und Heizkoerper, beide eingezeichnet
+    fbh = next(f for f in rep.figures if f.key == "zonenvergleich")
+    hk = next(f for f in rep.figures if f.key == "zonenvergleich_heizkoerper")
+
+    fbh_names = {t.name for t in fbh.figure.data}
+    assert fbh_names == {"FBH Geb.06", "FBH Geb.08 KI-Räume", "FBH Geb.08 Intensivpflege"}
+    assert [s.y0 for s in fbh.figure.layout.shapes] == [40.0]  # nur die FBH-Grenze
+
+    hk_names = {t.name for t in hk.figure.data}
+    assert hk_names == {"Stat. Heizung Geb.06", "Heizung Geb.1/3", "Heizung Lager Geb.2"}
+    assert [s.y0 for s in hk.figure.layout.shapes] == [70.0]  # nur die Heizkoerper-Grenze
+    assert fbh_names.isdisjoint(hk_names)  # keine Komponente taucht in beiden Vergleichen auf
