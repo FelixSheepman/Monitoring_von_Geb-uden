@@ -30,7 +30,7 @@ def test_html_report_is_complete(page):
     text, report = page
     for i, name in enumerate(REPORT_SECTIONS, start=1):
         assert f"{i} {name}" in text
-    assert text.count("<figure>") == len(report.figures) == 13
+    assert text.count("<figure>") == len(report.figures) == 14
     assert "Abbildung 4: Heizkurve" in text
     assert "Nicht berücksichtigte Messwerte" in text and "16 fehlerhafte Messwerte" in text
     assert "Vergleich manuelle Auswertung / Agent" in text

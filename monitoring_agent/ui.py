@@ -7,7 +7,7 @@ import streamlit as st
 
 from .assessment import assessment_texts, sensor_overview, theory_vs_practice
 from .buildings import GEBAEUDE, HEIZKREISE, N_HEIZKREISE, find_gebaeude
-from .building_diagram import svg_overview
+from .building_diagram import svg_netzplan
 from .circuit_analysis import circuit_figures, circuit_quality, circuit_stats
 from .comparison import agreement_summary, compare_table1
 from .figures import carpet_period_label
@@ -50,15 +50,23 @@ def render_data_extras(report) -> None:
 # ----------------------------------------------------------------------------- Gebaeude und Heizkreise
 
 def render_heizkreise(report, carpet_granularity: str, carpet_anchor) -> None:
-    st.subheader("Gebäude und Heizkreise")
+    st.subheader("Heizungskonzept und Heizkreise")
     st.write(
         f"Die Anlage besteht aus **{N_HEIZKREISE} eigenständigen Heizkreisen** (jeweils mit eigenem Vor- und "
-        "Rücklauf) in 4 Gebäuden; ein Gebäude kann mehrere Heizkreise besitzen. Der feste Bericht in den übrigen "
-        "Tabs zeigt immer den gesamten Datensatz. Hier lässt sich stattdessen ein einzelner Heizkreis auswählen: "
-        "Gebäude anklicken, um seine Heizkreise zu sehen, dann einen Heizkreis wählen für Datenprüfung, Kennzahlen "
-        "und Diagramme nur für diesen Kreis."
+        "Rücklauf) in 4 Gebäuden; ein Gebäude kann mehrere Heizkreise besitzen. Der Netzplan unten zeigt, wie "
+        "die Kreise an die Wärmeversorgung angeschlossen sind: rot ist der Vorlauf (warmes Wasser zum Verbraucher), "
+        "blau der Rücklauf, die grau-kursive Schrift unter jedem Messpunkt nennt die zugehörige Spalte aus der "
+        "Messdaten-Tabelle (Tab „Datenprüfung“) – so lässt sich jeder Wert einem Punkt im Netz zuordnen, auch ohne "
+        "Vorwissen in Heizungstechnik."
     )
-    st.markdown(svg_overview(st.session_state.get("selected_kreis")), unsafe_allow_html=True)
+    st.markdown(svg_netzplan(st.session_state.get("selected_kreis")), unsafe_allow_html=True)
+    st.caption(
+        "Der feste Bericht in den übrigen Tabs (Datenprüfung, Abbildungen, Auswertung) zeigt immer den gesamten "
+        "Datensatz mit allen 23 Spalten auf einmal – das bleibt für die vollständige Prüfung und den Abgleich mit "
+        "Kapitel 6 der Arbeit nötig. Hier lässt sich zusätzlich ein einzelner Heizkreis auswählen: Karte unten "
+        "anklicken (sie entspricht dem gleichnamigen Kästchen im Netzplan oben, das sich bei Auswahl farbig "
+        "hervorhebt) für Datenprüfung, Kennzahlen und Diagramme nur für diesen Kreis."
+    )
 
     cols = st.columns(len(GEBAEUDE))
     for col, geb in zip(cols, GEBAEUDE):

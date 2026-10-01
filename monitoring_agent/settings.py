@@ -46,6 +46,6 @@ FEATURE_LABELS = {
     "show_process": ("Vorgehen und Kontrollkriterien (Kap. 4/5)", "Zwischenschritte, Kontrollkriterien mit automatischer Prüfung, Agent-Steckbrief, Sensorik-Übersicht."),
     "show_research": ("Forschungsfragen (Kap. 9/10)", "Antwortentwürfe mit Belegen, Theorie-Praxis-Abgleich, Empfehlungen und Ausblick."),
     "show_explorer": ("Explorer (freie Diagramme)", "Eigene Spalten, Zeitraum und Carpetplots frei auswählen."),
-    "show_buildings": ("Gebäude & Heizkreise", "Gebäude anklicken und einen der 7 Heizkreise auswählen: eigene Datenprüfung und Diagramme nur für diesen Kreis."),
+    "show_buildings": ("Gebäude & Heizkreise", "Netzplan der Heizungsanlage, laienverständlich beschriftet; Gebäude anklicken und einen der 7 Heizkreise auswählen für eigene Datenprüfung und Diagramme."),
     "enable_word_export": ("Word-Berichtsexport", "Erzeugt einen formatierten Bericht (.docx) mit Abbildungen."),
 }

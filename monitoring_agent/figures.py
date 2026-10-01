@@ -293,6 +293,25 @@ def fig_daily_bar(daily: pd.Series, title: str, unit: str = "kWh") -> go.Figure:
     return fig
 
 
+def fig_duration_curve(curve: pd.DataFrame, markers: dict[float, tuple[float, float]], title: str) -> go.Figure:
+    """Geordnete Dauerlinie der thermischen Leistung: absteigend sortierte Leistung ueber die
+    Betriebsstunden, in denen sie erreicht oder ueberschritten wird. `markers` (siehe
+    metrics.duration_curve_percentiles) blendet Referenzlinien bei ausgewaehlten Zeitanteilen ein, z.B.
+    "5 % der Betriebsstunden: 20 kW" - mögliche Auslegungspunkte fuer ein Spitzenlast-/Zusatzheizgeraet."""
+    fig = go.Figure(go.Scatter(
+        x=curve["Stunden"], y=curve["Leistung_kW"], mode="lines", name="Leistung",
+        line=dict(color=COLOR_IST, width=2), fill="tozeroy", fillcolor="rgba(0,114,178,0.12)",
+    ))
+    for frac, (hours, power) in sorted(markers.items()):
+        fig.add_shape(type="line", x0=hours, x1=hours, y0=0, y1=power, line=dict(color=VERMILLION, width=1, dash="dot"))
+        fig.add_shape(type="line", x0=0, x1=hours, y0=power, y1=power, line=dict(color=VERMILLION, width=1, dash="dot"))
+        fig.add_annotation(x=hours, y=power, text=f"{frac*100:.0f} % · {power:.0f} kW", showarrow=True,
+                            arrowhead=0, ax=28, ay=-18, font=dict(size=10, color=VERMILLION))
+    fig.update_layout(**_base_layout(title, "Thermische Leistung (kW)", "Betriebsstunden (absteigend sortiert)"))
+    fig.update_layout(showlegend=False)
+    return fig
+
+
 def add_anomaly_markers(fig: go.Figure, x, y, name: str, color: str = "#C00000") -> go.Figure:
     """Legt rote Rautenmarker auf die Anomalie-Zeitpunkte (leere Eingabe -> keine Aenderung)."""
     if len(x) == 0:

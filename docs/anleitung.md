@@ -106,9 +106,9 @@ Zeitraum, Anzahl der Messpunkte, Zahl der plausiblen und der auffälligen Spalte
 | Tab | Inhalt |
 |---|---|
 | **🔍 Datenprüfung** | Tabelle 1: jede Spalte mit Min, Max, Fehlwerten, Status und Begründung. Darunter der Messdatenkopf (Abbildung 1), die Datenabdeckung der Heiz- und Sommerperioden und die Auswahl, ob erkannte fehlerhafte Werte in die Auswertung einfließen (siehe 6.12) |
-| **📈 Abbildungen** | Alle Diagramme (Abbildung 2 bis 14) mit Erklärung und der passenden Auswertung darunter |
+| **📈 Abbildungen** | Alle Diagramme (Abbildung 2 bis 15) mit Erklärung und der passenden Auswertung darunter |
 | **🧠 Auswertung** | Die Auswertungstexte, darunter die Tabelle der nicht berücksichtigten Werte mit Begründung, dazu das Energieeinsparpotenzial mit Erläuterung |
-| **🏢 Gebäude** | Gebäude anklicken, Heizkreis wählen: eigene Datenprüfung, Kennzahlen und Diagramme nur für diesen Kreis (siehe 6.13) |
+| **🏢 Gebäude** | Netzplan der Heizungsanlage (Vorlauf/Rücklauf, Pumpen, Sollwerte, Zähler, laienverständlich beschriftet); Gebäude anklicken, Heizkreis wählen: eigene Datenprüfung, Kennzahlen und Diagramme nur für diesen Kreis (siehe 6.13) |
 | **🏁 Bewertung** | Alle Befunde nach Schweregrad eingestuft, mit Regel, Kennzahl und Empfehlung (Kap. 6.5), dazu Zusammenfassung und Empfehlungen (Kap. 6.6) |
 | **⚖️ Vergleich** | Gegenüberstellung mit der manuellen Auswertung und der Entwurf für Kapitel 8 je Zwischenschritt |
 | **🧭 Vorgehen** | Zwischenschritte, Kontrollkriterien mit automatischer Prüfung, Aufbau des KI-Agenten, Sensorik-Übersicht, Diagrammtypen |
@@ -326,18 +326,35 @@ Dieser Ablauf unterstützt den Vergleich der konventionellen Bearbeitung mit der
 
 **Ergebnis:** Ihr steuert selbst, welche Werte in die Auswertung eingehen, und könnt jede Entscheidung mit Begründung nachweisen.
 
-### 6.13 Beispiel: Einen Heizkreis auswählen
+### 6.13 Beispiel: Das Heizungskonzept verstehen und einen Heizkreis auswählen
 
-**Ziel:** Nur einen bestimmten Heizkreis untersuchen, statt immer den ganzen Datensatz.
+**Ziel:** Auch ohne Heizungstechnik-Vorwissen verstehen, wie die Anlage aufgebaut ist, und nur einen bestimmten Heizkreis untersuchen statt immer den ganzen Datensatz.
 
-Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vor- und Rücklauf) in 4 Gebäuden; ein Gebäude kann mehrere Heizkreise besitzen. Der feste Bericht in den übrigen Tabs zeigt immer den gesamten Datensatz (Kap. 6 der Arbeit). Der Tab **🏢 Gebäude** ergänzt eine zweite, unabhängige Sicht nur für einen ausgewählten Kreis.
+Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vor- und Rücklauf) in 4 Gebäuden; ein Gebäude kann mehrere Heizkreise besitzen. Der feste Bericht in den übrigen Tabs zeigt immer den gesamten Datensatz (Kap. 6 der Arbeit). Der Tab **🏢 Gebäude** ergänzt eine zweite, unabhängige Sicht: zuerst den Netzplan der ganzen Anlage, danach wahlweise nur einen Heizkreis.
 
-1. Tab **🏢 Gebäude** öffnen. Oben steht eine Übersicht aller 4 Gebäude mit ihren Heizkreisen.
-2. Unter jedem Gebäude steht eine Schaltfläche je Heizkreis, zum Beispiel „4. Fußbodenheizung“ unter Gebäude 6. Anklicken wählt den Kreis aus; die Übersichtsgrafik hebt ihn farbig hervor.
-3. Darunter erscheinen Kennzahlen (z. B. Vorlauf Min/Max, Delta T, Pumpen-Laufzeitanteil), eine Datenprüfung nur für die Spalten dieses Kreises sowie Diagramme, die sich aus den vorhandenen Messgrößen ergeben: Soll-Ist-Vergleich (wenn ein Sollwert vorhanden ist), Vorlauf und Rücklauf, Temperaturspreizung, Carpetplot und Pumpenlaufzeit (wenn eine Pumpe vorhanden ist). Der Carpetplot nutzt dasselbe Zeitfenster (Jahr/Monat/Woche/Tag) wie in der Seitenleiste unter „📅 Carpetplot-Zeitfenster“ eingestellt (siehe 6.3) und zeigt ebenfalls die Außentemperatur in jeder Zelle.
+1. Tab **🏢 Gebäude** öffnen. Oben steht der **Netzplan**: Von der Wärmeerzeugung (oben, Kessel/Übergabe – selbst nicht in den Messdaten enthalten) geht es über den Wärmemengenzähler zu den 4 Gebäuden und von dort zu den 7 Heizkreisen. In jeder Kreis-Karte stehen:
+   - eine **rote Linie** für den Vorlauf (warmes Wasser zum Verbraucher) und eine **blaue Linie** für den Rücklauf, jeweils mit einem Punkt für den Messwert,
+   - darunter **grau-kursiv der genaue Spaltenname** aus der Messdaten-Tabelle, z. B. „FBH Geb.06 VL (Ist)“ – damit lässt sich jeder Punkt im Netzplan direkt in Tabelle 1 (Tab „Datenprüfung“) wiederfinden,
+   - ein **Pumpensymbol** (Kreis mit Dreieck), wenn eine Umwälzpumpe gemessen wird,
+   - eine **gestrichelte Markierung mit „Soll-Vorlauf“**, wenn zusätzlich ein Sollwert erfasst wird,
+   - bei der RLT-Anlage zusätzlich Außenluft/Zuluft und die beiden Stromzähler der Ventilatoren.
+   Die Legende unten im Netzplan erklärt alle Symbole noch einmal.
+2. Darunter steht dieselbe Übersicht als Schaltflächen: eine Fläche je Heizkreis, zum Beispiel „4. Fußbodenheizung“ unter Gebäude 6. Anklicken wählt den Kreis aus; die passende Karte im Netzplan oben wird dick umrandet.
+3. Nach der Auswahl erscheinen Kennzahlen (z. B. Vorlauf Min/Max, Delta T, Pumpen-Laufzeitanteil), eine Datenprüfung nur für die Spalten dieses Kreises sowie Diagramme, die sich aus den vorhandenen Messgrößen ergeben: Soll-Ist-Vergleich (wenn ein Sollwert vorhanden ist), Vorlauf und Rücklauf, Temperaturspreizung, Carpetplot und Pumpenlaufzeit (wenn eine Pumpe vorhanden ist). Der Carpetplot nutzt dasselbe Zeitfenster (Jahr/Monat/Woche/Tag) wie in der Seitenleiste unter „📅 Carpetplot-Zeitfenster“ eingestellt (siehe 6.3) und zeigt ebenfalls die Außentemperatur in jeder Zelle.
 4. Ein erneuter Klick auf denselben Heizkreis oder **Auswahl aufheben** setzt die Auswahl zurück; die übrigen Tabs zeigen dann wieder den Gesamtbericht.
 
-**Hinweis:** Diese Ansicht ergänzt den festen Bericht und verändert ihn nicht. Bereits ausgeschlossene Werte (6.12) sind auch hier schon nicht berücksichtigt. Welche Spalte zu welchem Gebäude und Heizkreis gehört, steht in `monitoring_agent/buildings.py` und lässt sich dort anpassen, falls sich die Anlage ändert.
+**Hinweis:** Diese Ansicht ergänzt den festen Bericht und verändert ihn nicht. Bereits ausgeschlossene Werte (6.12) sind auch hier schon nicht berücksichtigt. Welche Spalte zu welchem Gebäude und Heizkreis gehört, steht in `monitoring_agent/buildings.py`, das Aussehen des Netzplans in `monitoring_agent/building_diagram.py` – beides lässt sich dort anpassen, falls sich die Anlage ändert.
+
+### 6.14 Beispiel: Geordnete Dauerlinie – wann braucht es ein Zusatzheizgerät?
+
+**Ziel:** Abschätzen, wie oft die volle Heizleistung wirklich gebraucht wird, als Grundlage für die Auslegung eines Spitzenlast- oder Zusatzheizgeräts.
+
+1. Tab **📈 Abbildungen**, ganz unten **Abbildung 15: Geordnete Dauerlinie der thermischen Leistung**. Die Leistung wird aus der Differenz zweier aufeinanderfolgender Zählerstände des Wärmemengenzählers geteilt durch die tatsächlich verstrichene Zeit berechnet (keine feste 15-Minuten-Annahme, damit Lücken im Datensatz die Kurve nicht verfälschen) und absteigend sortiert dargestellt.
+2. Die x-Achse zeigt die Betriebsstunden, in denen eine Leistung erreicht oder überschritten wird – ganz links steht die Spitzenleistung, die nur sehr kurz anliegt, nach rechts hin sinkt die Kurve auf die meiste Zeit über gültige Grundlast.
+3. Vier Referenzpunkte sind eingezeichnet (1 %, 5 %, 10 %, 20 % der Betriebsstunden) mit der jeweiligen Leistung. Ein Grundlastgerät, das auf einen dieser Werte ausgelegt ist, deckt die übrige Zeit allein ab; nur für die selteneren Spitzen oberhalb davon wäre ein Zusatz- bzw. Spitzenlastgerät nötig.
+4. Die zugehörige Auswertung im Tab **🧠 Auswertung** nennt die konkreten Zahlen aus eurem Datensatz.
+
+**Wichtig:** Die tatsächliche Leistung des vorhandenen Wärmeerzeugers steht nicht in den Messdaten. Die vier Referenzpunkte sind Vorschläge für mögliche Auslegungsgrenzen, keine Aussage darüber, welches Gerät tatsächlich verbaut ist oder sein sollte – das ist mit der Anlagendokumentation bzw. dem Betreiber abzugleichen.
 
 ## 7. Ergebnisse richtig lesen
 

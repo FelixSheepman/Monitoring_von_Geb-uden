@@ -15,7 +15,7 @@ import pandas as pd
 from . import anomalies as an
 from .assessment import build_assessment, data_coverage, measurement_head
 from . import figures as fx
-from .metrics import daily_consumption
+from .metrics import daily_consumption, duration_curve, duration_curve_percentiles
 from .exclusion import ExclusionLog, apply_exclusions
 from .extras import availability_daily, pump_runtime_monthly, savings_potential
 from .narrative import NarrativeBlock, build_narrative
@@ -193,6 +193,16 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
         "verfuegbarkeit", "Datenverfügbarkeit je Sensor und Tag",
         fx.fig_availability(availability_daily(df), "Datenverfügbarkeit je Sensor und Tag"),
         "Anzahl fehlender oder auf 0 stehender Zeitschritte (von 96 je Tag) je Spalte und Kalendertag.",
+    ))
+
+    duration = duration_curve(df, "Zähler 019 – WMZ")
+    figs.append(FigureEntry(
+        "dauerlinie_leistung", "Geordnete Dauerlinie der thermischen Leistung",
+        fx.fig_duration_curve(duration, duration_curve_percentiles(duration), "Geordnete Dauerlinie der thermischen Leistung"),
+        "Aus dem Wärmemengenzähler berechnete Leistung, absteigend sortiert über die Betriebsstunden; "
+        "zeigt, wie selten die Spitzenleistung gebraucht wird und ab welchem Leistungsniveau ein "
+        "Zusatz-/Spitzenlastgerät zum Tragen käme (Referenzpunkte bei 1/5/10/20 % der Betriebsstunden; "
+        "die tatsächliche Kesselleistung ist in den Daten nicht enthalten).",
     ))
 
     anomaly_counts = _apply_anomalies(df, figs, th) if show_anomalies else {}

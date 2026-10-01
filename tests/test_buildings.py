@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from monitoring_agent.building_diagram import svg_overview
+from monitoring_agent.building_diagram import svg_netzplan, svg_overview
 from monitoring_agent.buildings import GEBAEUDE, HEIZKREISE, N_HEIZKREISE, SITE_COLUMNS, find_gebaeude
 from monitoring_agent.circuit_analysis import circuit_figures, circuit_quality, circuit_stats
 from monitoring_agent.config import COLUMNS
@@ -97,3 +97,35 @@ def test_svg_overview_contains_all_circuits_and_highlights_the_selection():
     highlighted = svg_overview("fbh_geb06")
     assert highlighted != plain  # die Hervorhebung veraendert das Bild
     assert highlighted.count('stroke-width="2.5"') >= 5  # 4 Gebaeuderahmen + mind. 1 hervorgehobener Kreis
+
+
+def test_netzplan_is_well_formed_and_labels_every_sensor_column():
+    plain = svg_netzplan()
+    assert plain.startswith("<svg") and plain.count("<svg") == 1 and plain.endswith("</svg>")
+    # jede Spalte eines Heizkreises (VL/RL, Soll, Pumpe) taucht als Beschriftung im Netzplan auf
+    for k in HEIZKREISE.values():
+        for c in (*k.columns, *k.extra_columns):
+            short_or_abbreviated = c.short in plain or c.short.replace("Zähler ", "Z. ") in plain
+            assert short_or_abbreviated, c.short  # Zaehler-Spalten werden im Netzplan als "Z. ..." abgekuerzt
+        assert k.short in plain
+    for g in GEBAEUDE:
+        assert g.name in plain
+
+
+def test_netzplan_card_width_covers_all_buildings_side_by_side():
+    """Regressionstest fuer einen Layout-Bug: die Gesamtbreite muss alle Gebaeude-Spalten nebeneinander
+    aufnehmen (nicht nur die breiteste einzelne Spalte), sonst liegen Knoten ausserhalb des viewBox."""
+    import re
+    svg = svg_netzplan()
+    w, h = (float(x) for x in re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', svg).groups())
+    xs = [float(x) for x in re.findall(r'<circle cx="([\d.-]+)"', svg)]
+    assert xs and max(xs) <= w and min(xs) >= 0
+    assert w > 1800  # 7 Kreise in 4 Gebaeuden nebeneinander sind deutlich breiter als ein einzelnes Gebaeude
+
+
+def test_netzplan_highlights_the_selected_circuit():
+    plain = svg_netzplan()
+    highlighted = svg_netzplan("stat_heizung_geb06")
+    assert highlighted != plain
+    assert plain.count('stroke-width="3.4"') == 0
+    assert highlighted.count('stroke-width="3.4"') == 1  # genau eine Karte hervorgehoben

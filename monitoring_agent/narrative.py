@@ -16,7 +16,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from .metrics import daily_consumption
+from .metrics import daily_consumption, duration_curve, duration_curve_percentiles
 from .settings import Thresholds
 
 HEIZGRENZE_AUL = 15.0  # °C - ueblicher Schwellenwert, ab dem Heizbetrieb einstellbar waere
@@ -170,6 +170,27 @@ def _pumpen_text(df: pd.DataFrame, pump_cols: list[tuple[str, str]], meter_col: 
     return NarrativeBlock(["pumpenlaufzeit"], heading, text)
 
 
+def _dauerlinie_text(df: pd.DataFrame, meter_col: str) -> NarrativeBlock:
+    curve = duration_curve(df, meter_col)
+    pct = duration_curve_percentiles(curve, (0.01, 0.05, 0.20))
+    h1, p1 = pct[0.01]
+    h5, p5 = pct[0.05]
+    h20, p20 = pct[0.20]
+    peak = curve["Leistung_kW"].max()
+    text = (
+        f"Die geordnete Dauerlinie zeigt die aus dem Wärmemengenzähler berechnete thermische Leistung, absteigend "
+        f"sortiert über die Betriebsstunden. Die Spitzenleistung von {peak:.0f} kW wird nur kurzzeitig erreicht: "
+        f"In {h1:.0f} Betriebsstunden (rund 1 % der erfassten Zeit) wird eine Leistung von {p1:.0f} kW oder mehr "
+        f"abgerufen, in {h5:.0f} Stunden (5 %) noch {p5:.0f} kW, in {h20:.0f} Stunden (20 %) nur noch {p20:.0f} kW. "
+        f"Ein Grundlastkessel, der auf einen Wert deutlich unter der Spitzenleistung ausgelegt ist, würde die "
+        f"meiste Zeit genügen; nur für die seltenen Spitzen oberhalb seiner eigenen Leistung wäre ein "
+        f"Zusatz- bzw. Spitzenlastgerät erforderlich. Die tatsächliche Leistung des vorhandenen Wärmeerzeugers "
+        f"ist in den Messdaten nicht enthalten – die markierten Punkte sind Vorschläge für mögliche "
+        f"Auslegungsgrenzen und durch die Anlagendokumentation bzw. den Betreiber zu bestätigen."
+    )
+    return NarrativeBlock(["dauerlinie_leistung"], "Geordnete Dauerlinie: Auslegung eines Zusatzheizgeräts", text)
+
+
 def build_narrative(df: pd.DataFrame, th: Thresholds | None = None) -> list[NarrativeBlock]:
     """Erzeugt alle Auswertungstexte fuer den vorliegenden (vollaufgeloesten) Datensatz."""
     th = th or Thresholds()
@@ -188,4 +209,5 @@ def build_narrative(df: pd.DataFrame, th: Thresholds | None = None) -> list[Narr
         _sommerbetrieb_text(df, "Zähler 019 – WMZ"),
         _pumpen_text(df, [("Stat. Heizung Geb.06", "Stat. Heizung Geb.06 Pumpe"), ("FBH Geb.06", "FBH Geb.06 Pumpe")],
                      "Zähler 019 – WMZ"),
+        _dauerlinie_text(df, "Zähler 019 – WMZ"),
     ]
