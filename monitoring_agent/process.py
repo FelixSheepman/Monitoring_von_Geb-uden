@@ -135,7 +135,15 @@ def _measure(ctx: Ctx) -> dict[str, tuple[float | None, str, str]]:
                   "alle Typen identisch" if not mismatched else "Abweichungen: " + "; ".join(mismatched), "Excel-Diagrammtypen")
 
     checks: list[tuple[str, bool]] = []
-    checks.append(("keine Sekundärachse", all("yaxis2" not in f.layout.to_plotly_json() for f in figs.values())))
+    # "Sekundaerachse" meint eine ueberlagerte zweite y-Achse auf DERSELBEN Plotflaeche (zwei Einheiten,
+    # ein Diagramm - genau das soll die Regel verhindern). Eine Mehrfachauswahl an y-Achsen durch
+    # uebereinandergestapelte Subplot-Zeilen (z.B. Tag/Nacht-Vergleich mit eigenem Pumpen-Panel) ist keine
+    # Sekundaerachse in diesem Sinn: jede Zeile hat ihre eigene, nicht ueberlagerte Achse.
+    no_secondary_axis = not any(
+        name.startswith("yaxis") and name != "yaxis" and bool(ax.get("overlaying"))
+        for f in figs.values() for name, ax in f.layout.to_plotly_json().items()
+    )
+    checks.append(("keine Sekundärachse", no_secondary_axis))
     carpets = [figs[k] for k in ("carpet_rlt_vl", "carpet_rlt_rl") if k in figs]
     checks.append(("Carpetplots mit fester Farbskala", bool(carpets) and all(
         f.data[0].zmin is not None and f.data[0].zmax is not None for f in carpets)))
@@ -148,7 +156,15 @@ def _measure(ctx: Ctx) -> dict[str, tuple[float | None, str, str]]:
     passed = sum(ok for _, ok in checks)
     out["GR3"] = (_pct(passed, len(checks)), "; ".join(f"{n}: {'ja' if ok else 'nein'}" for n, ok in checks), "Regeln aus Kap. 5.2")
 
-    labelled = sum(1 for f in rep.figures if f.figure.layout.title.text and f.figure.layout.xaxis.title.text and f.caption)
+    # Achsenbeschriftung: mindestens eine x-Achse mit Titel (wie zuvor; manche Carpetplots/Heatmaps lassen
+    # die y-Achse absichtlich unbeschriftet, da die Kategorien schon als Tick-Labels stehen). Nicht auf
+    # "layout.xaxis" (die erste Achse) beschraenkt, da ein Diagramm mit mehreren Subplot-Zeilen (z.B. der
+    # Tag/Nacht-Vergleich) die Zeitachsen-Beschriftung bewusst nur einmal unten zeigt, nicht in jeder Zeile.
+    def _has_axis_title(fig) -> bool:
+        lj = fig.layout.to_plotly_json()
+        return any(k.startswith("xaxis") and (v.get("title") or {}).get("text") for k, v in lj.items())
+
+    labelled = sum(1 for f in rep.figures if f.figure.layout.title.text and _has_axis_title(f.figure) and f.caption)
     out["GR4"] = (_pct(labelled, len(rep.figures)), f"{labelled} von {len(rep.figures)} Abbildungen mit Titel, Achsenbeschriftung und Bildunterschrift", "")
 
     heads = [b.heading for b in rep.narrative]

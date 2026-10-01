@@ -9,7 +9,7 @@ Beim Technischen Monitoring von Nichtwohngebäuden fallen immer wiederkehrende A
 **Was ihr bekommt:**
 
 - eine **Datenprüfung** aller Messspalten (plausibel oder auffällig, mit Begründung),
-- den **Messdatenkopf** (Abbildung 1) und **14 weitere Abbildungen** (Verläufe, Heizkurve, Carpetplots, Zonenvergleich je Systemtyp, Spreizung, Tagesverbräuche, Pumpenlaufzeiten, Datenverfügbarkeit, Dauerlinie); die Nummerierung entspricht der Hausarbeit mit agentenseitigen Ergänzungen,
+- den **Messdatenkopf** (Abbildung 1) und **16 weitere Abbildungen** (Verläufe, Heizkurve, Carpetplots, Tag/Nacht-Vergleiche, Zonenvergleich je Systemtyp, Spreizung, Tagesverbräuche, Pumpenlaufzeiten, Datenverfügbarkeit, Dauerlinie); die Nummerierung entspricht der Hausarbeit mit agentenseitigen Ergänzungen,
 - **Auswertungstexte**, deren Zahlen live aus euren Daten berechnet werden,
 - eine Abschätzung des **Energieeinsparpotenzials** und eine **Bewertung** aller Befunde nach Schweregrad mit Empfehlungen,
 - **Kontrollkriterien** für jeden Zwischenschritt mit automatischer Prüfung und einen **Entwurf für Kapitel 8** (Vergleich mit der manuellen Auswertung),
@@ -90,7 +90,7 @@ In der öffentlichen Cloud-Version werden hochgeladene Dateien auf dem Server de
 | Bereich | Wozu |
 |---|---|
 | **Eingabedaten** | Datei hochladen oder den Beispieldatensatz nutzen |
-| **📅 Carpetplot-Zeitfenster** | Zeitfenster für die beiden Carpetplots (Abbildung 5 und 6): vier einzeln anklickbare Optionen Jahr, Monat, Woche oder Tag, je nach Wahl mit Jahr-Feld und Monats-Dropdown oder einem Datumsfeld (siehe 6.3) |
+| **📅 Carpetplot-Zeitfenster** | Zeitfenster für die beiden Carpetplots (Abbildung 6 und 7): vier einzeln anklickbare Optionen Jahr, Monat, Woche oder Tag, je nach Wahl mit Jahr-Feld und Monats-Dropdown oder einem Datumsfeld (siehe 6.3) |
 | **Darstellung Zeitreihen** | Auflösung der Liniendiagramme: Rohdaten (15 Min.), Stundenmittel oder Tagesmittel |
 | **⚙️ Einstellungen – Funktionen an/aus** | Einzelne Funktionen ein- oder ausschalten (Abschnitt 5) |
 | **🎚️ Schwellenwerte & Annahmen** | Grenzwerte und Annahmen per Regler ändern (Abschnitt 5) |
@@ -106,7 +106,7 @@ Zeitraum, Anzahl der Messpunkte, Zahl der plausiblen und der auffälligen Spalte
 | Tab | Inhalt |
 |---|---|
 | **🔍 Datenprüfung** | Tabelle 1: jede Spalte mit Min, Max, Fehlwerten, Status und Begründung. Darunter der Messdatenkopf (Abbildung 1), die Datenabdeckung der Heiz- und Sommerperioden und die Auswahl, ob erkannte fehlerhafte Werte in die Auswertung einfließen (siehe 6.12) |
-| **📈 Abbildungen** | Alle Diagramme (Abbildung 2 bis 16) mit Erklärung und der passenden Auswertung darunter |
+| **📈 Abbildungen** | Alle Diagramme (Abbildung 2 bis 18) mit Erklärung und der passenden Auswertung darunter |
 | **🧠 Auswertung** | Die Auswertungstexte, darunter die Tabelle der nicht berücksichtigten Werte mit Begründung, dazu das Energieeinsparpotenzial mit Erläuterung |
 | **🏢 Gebäude** | Netzplan der Heizungsanlage (Vorlauf/Rücklauf, Pumpen, Sollwerte, Zähler, laienverständlich beschriftet); Gebäude anklicken, Heizkreis wählen: eigene Datenprüfung, Kennzahlen und Diagramme nur für diesen Kreis (siehe 6.13) |
 | **🏁 Bewertung** | Alle Befunde nach Schweregrad eingestuft, mit Regel, Kennzahl und Empfehlung (Kap. 6.5), dazu Zusammenfassung und Empfehlungen (Kap. 6.6) |
@@ -203,7 +203,7 @@ Ein Carpetplot zeigt einen Messwert als Farbfläche. Jede Zelle ist immer **ein 
 2. Wählt Jahr 2025, Monat Februar: Der Februar ist fast durchgehend rot, das Tagesmittel liegt an allen Tagen bei rund 62 °C. Auffällig ist eine blaue Phase zwischen dem 21. und 25. Februar, in der das Tagesmittel auf 41 bis 51 °C einbricht. Das ist ein Ereignis, das ihr mit dem Betreiber klären solltet.
 ![Carpetplot Februar 2025](img/carpet_februar.png)
 
-3. In jeder Zelle von Abbildung 5 (RLT primär VL) steht zusätzlich klein die **Außentemperatur zur selben Uhrzeit** (aus „RLT KL01 Außenluft“, auf eine Nachkommastelle genau wie im Tooltip, nicht auf ganze Grad gerundet). So seht ihr direkt, ob der Vorlauf bei kalter Außentemperatur mitzieht – bei „Woche“ und „Tag“ sind die Zellen groß genug, um die Zahl gut zu lesen; bei „Jahr“ entfällt sie wegen der vielen Zellen. Abbildung 6 (Rücklauf) zeigt keine Außentemperatur, weil hier der Zusammenhang zum Vorlauf im Vordergrund steht.
+3. In jeder Zelle von Abbildung 6 (RLT primär VL) steht zusätzlich klein die **Außentemperatur zur selben Uhrzeit** (aus „RLT KL01 Außenluft“, auf eine Nachkommastelle genau wie im Tooltip, nicht auf ganze Grad gerundet). So seht ihr direkt, ob der Vorlauf bei kalter Außentemperatur mitzieht – bei „Woche“ und „Tag“ sind die Zellen groß genug, um die Zahl gut zu lesen; bei „Jahr“ entfällt sie wegen der vielen Zellen. Abbildung 7 (Rücklauf) zeigt keine Außentemperatur, weil hier der Zusammenhang zum Vorlauf im Vordergrund steht.
 4. Vergleicht mit dem Juli. Am schnellsten geht das im Tab **🔎 Explorer**: Diagrammtyp „Carpetplot“, Spalte „RLT primär VL“, Zeitfenster „Monat“, Jahr 2025, Monat Juli. Dort lässt sich zusätzlich das Häkchen „Außentemperatur in jeder Zelle anzeigen“ abwählen, wenn die Zahlen stören.
 
 ![Carpetplot Juli 2025](img/carpet_juli.png)
@@ -355,7 +355,7 @@ Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vo
 
 **Ziel:** Abschätzen, wie oft die volle Heizleistung wirklich gebraucht wird, als Grundlage für die Auslegung eines Spitzenlast- oder Zusatzheizgeräts.
 
-1. Tab **📈 Abbildungen**, ganz unten **Abbildung 16: Geordnete Dauerlinie der thermischen Leistung**. Die Leistung wird aus der Differenz zweier aufeinanderfolgender Zählerstände des Wärmemengenzählers geteilt durch die tatsächlich verstrichene Zeit berechnet (keine feste 15-Minuten-Annahme, damit Lücken im Datensatz die Kurve nicht verfälschen) und absteigend sortiert dargestellt.
+1. Tab **📈 Abbildungen**, ganz unten **Abbildung 18: Geordnete Dauerlinie der thermischen Leistung**. Die Leistung wird aus der Differenz zweier aufeinanderfolgender Zählerstände des Wärmemengenzählers geteilt durch die tatsächlich verstrichene Zeit berechnet (keine feste 15-Minuten-Annahme, damit Lücken im Datensatz die Kurve nicht verfälschen) und absteigend sortiert dargestellt.
 2. Die x-Achse zeigt die Betriebsstunden, in denen eine Leistung erreicht oder überschritten wird – ganz links steht die Spitzenleistung, die nur sehr kurz anliegt, nach rechts hin sinkt die Kurve auf die meiste Zeit über gültige Grundlast.
 3. Vier Referenzpunkte sind eingezeichnet (1 %, 5 %, 10 %, 20 % der Betriebsstunden) mit der jeweiligen Leistung. Ein Grundlastgerät, das auf einen dieser Werte ausgelegt ist, deckt die übrige Zeit allein ab; nur für die selteneren Spitzen oberhalb davon wäre ein Zusatz- bzw. Spitzenlastgerät nötig.
 4. Die zugehörige Auswertung im Tab **🧠 Auswertung** nennt die konkreten Zahlen aus eurem Datensatz.
@@ -368,9 +368,10 @@ Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vo
 
 1. Öffnet **🎚️ Schwellenwerte & Annahmen**. Dort stehen zwei Grenzwerte: **FBH-Auslegungsgrenze Vorlauf** (Standard 40 °C, für Fußbodenheizungen) und **Heizkörper-Auslegungsgrenze Vorlauf** (Standard 70 °C, für Heizkörper/statische Heizflächen). Beide sind Annahmen – stellt sie auf die Werte aus eurer Anlagendokumentation.
 2. In jedem Diagramm, das eine Vorlauftemperatur über die Zeit oder gegen die Außentemperatur zeigt, erscheint jetzt eine **dicke rote gestrichelte Linie** bei diesem Grenzwert, beschriftet mit Wert und Komponente. Das betrifft:
-   - **Abbildung 3 und 7** (Regelgüte Soll-/Ist-Vorlauf, je mit der passenden Grenze für Heizkörper bzw. FBH),
-   - **Abbildung 4** (Heizkurve),
-   - **Abbildung 8 und 9** (Zonenvergleich, siehe 6.16),
+   - **Abbildung 3 und 8** (Regelgüte Soll-/Ist-Vorlauf, je mit der passenden Grenze für Heizkörper bzw. FBH),
+   - **Abbildung 4 und 9** (Tag/Nacht-Vergleich Regelgüte, siehe 6.17, je mit derselben Grenze wie die zugehörige Regelgüte-Abbildung),
+   - **Abbildung 5** (Heizkurve),
+   - **Abbildung 10 und 11** (Zonenvergleich, siehe 6.16),
    - den Diagrammen „Regelgüte“ und „Vorlauf und Rücklauf“ eines einzelnen Heizkreises im Tab **🏢 Gebäude** (mit der zur Komponente passenden Grenze; die RLT-Anlage hat keine eigene Grenze, da sie weder Heizkörper noch Fußbodenheizung ist).
 3. Überschreitet die blaue Vorlaufkurve die rote Linie deutlich und dauerhaft, ist das ein Hinweis auf eine zu hoch eingestellte Regelung oder eine falsche Zuordnung der Komponente – ein Befund, den ihr mit dem Betreiber klären solltet.
 
@@ -382,10 +383,20 @@ Die Anlage besteht aus **7 eigenständigen Heizkreisen** (jeweils mit eigenem Vo
 
 Fußbodenheizungen und Heizkörper sind absichtlich auf unterschiedliche Vorlauftemperaturen ausgelegt (siehe 6.15). Ein gemeinsames Diagramm beider Systemtypen würde beim hydraulischen Abgleich nur den erwarteten Niveauunterschied zeigen, nicht ob die Kreise *innerhalb* ihres Typs gleichmäßig versorgt werden. Deshalb gibt es zwei getrennte Diagramme:
 
-1. **Abbildung 8 – Zonenvergleich Fußbodenheizungen**: die drei FBH-Kreise (Geb.06, Geb.08 KI-Räume, Geb.08 Intensivpflege) auf einer Skala, mit der FBH-Grenzlinie.
-2. **Abbildung 9 – Zonenvergleich Heizkörperkreise**: die drei Heizkörperkreise (Stat. Heizung Geb.06, Heizung Geb.1/3, Heizung Lager Geb.2) auf einer eigenen Skala, mit der Heizkörper-Grenzlinie.
+1. **Abbildung 10 – Zonenvergleich Fußbodenheizungen**: die drei FBH-Kreise (Geb.06, Geb.08 KI-Räume, Geb.08 Intensivpflege) auf einer Skala, mit der FBH-Grenzlinie.
+2. **Abbildung 11 – Zonenvergleich Heizkörperkreise**: die drei Heizkörperkreise (Stat. Heizung Geb.06, Heizung Geb.1/3, Heizung Lager Geb.2) auf einer eigenen Skala, mit der Heizkörper-Grenzlinie.
 
 Weicht innerhalb einer dieser beiden Gruppen eine Zone deutlich von den anderen ab, deutet das auf einen fehlerhaften hydraulischen Abgleich oder eine übersteuerte Mischerregelung in genau dieser Zone hin – unabhängig vom grundsätzlichen Temperaturunterschied zwischen FBH und Heizkörper.
+
+### 6.17 Beispiel: Zeigt sich überhaupt ein Unterschied zwischen Tag- und Nachtbetrieb?
+
+**Ziel:** Auf einen Blick erkennen, ob eine Nachtabsenkung tatsächlich wirkt, statt das nur aus der feinen Tagesstruktur eines einzelnen Carpetplot-Zeitfensters zu vermuten.
+
+1. Tab **📈 Abbildungen**, **Abbildung 4 (Stat. Heizung Geb.06)** bzw. **Abbildung 9 (FBH Geb.06)**: „Tag/Nacht-Vergleich Regelgüte“. Jede der beiden Abbildungen zeigt vier übereinanderliegende Panels: oben Tagbetrieb (06:00–18:00 Uhr, Annahme) mit Soll-Vorlauf, den einzelnen Ist-Vorlauf-Messwerten als Punktwolke und einem geglätteten Tagestrend, darunter die Pumpenlaufzeit dieses Zeitfensters; darunter dasselbe für den Nachtbetrieb (18:00–06:00 Uhr).
+2. Der Tagestrend fasst die stark streuenden 15-Minuten-Rohwerte zu einem Mittelwert je Kalendertag zusammen – nur so wird der langfristige, saisonale Verlauf über die gesamte Messperiode überhaupt lesbar.
+3. **So lest ihr es:** Zeigen die Tag- und die Nacht-Panels ein nahezu identisches Bild (gleiche Trendkurve, gleiche Pumpenlaufzeit), findet effektiv keine Nachtabsenkung statt – unabhängig davon, ob die Regelung formal eine vorsieht. Bleibt der Ist-Trend zudem dauerhaft über dem (niedrigeren) Soll-Vorlauf, statt ihm zu folgen, deutet das auf ein Stellglied hin, das sich nicht mehr schließen lässt (z. B. ein defektes Misch- oder Rückschlagventil) – die Anlage kann dann zwar hochregeln, aber nicht wirksam absenken.
+
+**Hinweis:** Die Panels stehen zusätzlich zu den bisherigen Carpetplots und Regelgüte-Abbildungen, nicht anstelle von ihnen – Carpetplots zeigen die feine Struktur eines Zeitfensters, dieser Vergleich den langfristigen Trend über die ganze Messperiode. Verfügbar nur für Heizkreise mit eigener Pumpenmessung (aktuell Stat. Heizung Geb.06 und FBH Geb.06).
 
 ## 7. Ergebnisse richtig lesen
 

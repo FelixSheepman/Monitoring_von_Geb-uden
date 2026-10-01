@@ -92,12 +92,12 @@ with st.sidebar:
 
     st.divider()
     st.header("📅 Carpetplot-Zeitfenster")
-    st.caption("Gilt für Abbildung 5/6, den Carpetplot je Heizkreis (Tab „Gebäude“) und dessen Vorauswahl im Explorer.")
+    st.caption("Gilt für Abbildung 6/7, den Carpetplot je Heizkreis (Tab „Gebäude“) und dessen Vorauswahl im Explorer.")
     carpet_granularity = st.radio(
         "Ansicht", list(fx.CARPET_GRANULARITIES), index=1,
         help="Jede Zelle zeigt immer einen einzelnen 15-Minuten-Messwert, ohne Glättung – Jahr/Woche/Tag "
              "zoomen nur das Zeitfenster, nicht die Genauigkeit. Bei Woche und Tag steht zusätzlich die "
-             "Außentemperatur in jeder Zelle (Zusammenhang Vorlauf/Außentemperatur, siehe Abbildung 5).",
+             "Außentemperatur in jeder Zelle (Zusammenhang Vorlauf/Außentemperatur, siehe Abbildung 6).",
     )
     if carpet_granularity == "Jahr":
         carpet_year = st.number_input("Jahr", min_value=2020, max_value=2035, value=2025, step=1)
@@ -363,7 +363,7 @@ with tabs["📈 Abbildungen"]:
             f"{k}: {v}" for k, v in report.anomaly_counts.items()))
     st.caption("Die Nummerierung folgt der Hausarbeit: Abbildung 1 ist der Messdatenkopf (Tab Datenprüfung), die Diagramme beginnen bei Abbildung 2.")
     _carpet_label = fx.carpet_period_label(carpet_granularity, pd.Timestamp(int(carpet_year), int(carpet_month), int(carpet_day)))
-    st.info(f"📅 Zeitfenster der Carpetplots (Abbildung 5/6) aktuell: **{carpet_granularity} – {_carpet_label}**. "
+    st.info(f"📅 Zeitfenster der Carpetplots (Abbildung 6/7) aktuell: **{carpet_granularity} – {_carpet_label}**. "
             "Ändern: Seitenleiste **📅 Carpetplot-Zeitfenster**.")
     for number, entry in enumerate(report.figures, start=2):
         st.plotly_chart(entry.figure, width="stretch", key=entry.key)

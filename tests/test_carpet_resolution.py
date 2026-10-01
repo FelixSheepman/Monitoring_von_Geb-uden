@@ -1,5 +1,5 @@
 """Tests fuer die waehlbare Carpetplot-Aufloesung (Jahr/Monat/Woche/Tag) und die
-Aussentemperatur-Beschriftung der Zellen (Abbildung 5)."""
+Aussentemperatur-Beschriftung der Zellen (Abbildung 6)."""
 
 from pathlib import Path
 
@@ -118,8 +118,15 @@ def test_build_report_honours_a_different_granularity_and_anchor(df):
 
 @needs_data
 def test_no_secondary_axis_introduced_by_the_new_figures(df):
+    """GR3-Regel: keine ueberlagerte Sekundaerachse (zwei Einheiten auf einer Plotflaeche). Eigene,
+    nicht ueberlagerte Achsen je Subplot-Zeile (z.B. der Tag/Nacht-Vergleich mit vier Panels) sind
+    davon ausdruecklich NICHT betroffen - siehe process.py, Kriterium GR3."""
     rep = build_report(df, carpet_granularity="Tag", carpet_year=2025, carpet_month=2, carpet_day=13)
-    assert all("yaxis2" not in f.figure.layout.to_plotly_json() for f in rep.figures)  # GR3-Regel
+    for f in rep.figures:
+        layout = f.figure.layout.to_plotly_json()
+        overlaying = [name for name, ax in layout.items()
+                      if name.startswith("yaxis") and name != "yaxis" and ax.get("overlaying")]
+        assert not overlaying, f"{f.key}: ueberlagerte Sekundaerachse {overlaying}"
 
 
 # ----------------------------------------------------------------------------- Einbindung in circuit_analysis
@@ -236,3 +243,25 @@ def test_zonenvergleich_compares_only_same_type_components(df):
     assert hk_names == {"Stat. Heizung Geb.06", "Heizung Geb.1/3", "Heizung Lager Geb.2"}
     assert [s.y0 for s in hk.figure.layout.shapes] == [70.0]  # nur die Heizkoerper-Grenze
     assert fbh_names.isdisjoint(hk_names)  # keine Komponente taucht in beiden Vergleichen auf
+
+
+@needs_data
+@pytest.mark.parametrize("key,limit", [("tag_nacht_stat_heizung", 70.0), ("tag_nacht_fbh", 40.0)])
+def test_day_night_comparison_has_four_panels_with_both_limit_lines(df, key, limit):
+    """Der Tag/Nacht-Vergleich (siehe 6.17 der Anleitung) stellt Tag- und Nachtbetrieb als vier
+    uebereinanderliegende Panels dar (Temperatur Tag, Pumpe Tag, Temperatur Nacht, Pumpe Nacht), je mit
+    derselben Komponenten-Grenze wie die zugehoerige Regelguete-Abbildung."""
+    rep = build_report(df)
+    fig = next(f for f in rep.figures if f.key == key).figure
+
+    y_axes = [k for k in fig.layout.to_plotly_json() if k.startswith("yaxis")]
+    assert len(y_axes) == 4  # Temperatur Tag, Pumpe Tag, Temperatur Nacht, Pumpe Nacht
+
+    names = {t.name for t in fig.data}
+    assert {"Trend Ist (Tag)", "Trend Ist (Nacht)", "Soll-Vorlauf (Tag)", "Soll-Vorlauf (Nacht)"} <= names
+
+    limit_lines = [s.y0 for s in fig.layout.shapes if s.y0 == s.y1]
+    assert limit_lines == [limit, limit]  # je eine Grenzlinie im Tag- und im Nacht-Temperaturpanel
+
+    pump_ranges = [fig.layout[a].range for a in y_axes if fig.layout[a].range is not None]
+    assert pump_ranges == [(0.0, 1.0), (0.0, 1.0)]  # die beiden Pumpenpanels, fest auf 0-1

@@ -67,7 +67,7 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
     für eine ruhigere Darstellung.
 
     `carpet_granularity` (Jahr/Monat/Woche/Tag, Standard Monat wie bisher) legt das Zeitfenster der
-    Carpetplots (Abbildung 5/6) fest; `carpet_year`/`carpet_month`/`carpet_day` verankern es (je nach
+    Carpetplots (Abbildung 6/7) fest; `carpet_year`/`carpet_month`/`carpet_day` verankern es (je nach
     Granularität wird nur ein Teil davon gebraucht, siehe figures.carpet_window). Jede Zelle bleibt ein
     einzelner 15-Min-Messwert, unabhängig von der Granularität.
 
@@ -103,6 +103,17 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
         "Vergleich der systemseitig berechneten Soll-Vorlauftemperatur mit der gemessenen Ist-Vorlauftemperatur. "
         "Die rote gestrichelte Linie ist die zulässige Vorlauftemperatur dieser Heizkörper-Komponente "
         f"({th.heizkoerper_limit:.0f} °C, Annahme – im Einstellungsmenü anpassbar).",
+    ))
+
+    figs.append(FigureEntry(
+        "tag_nacht_stat_heizung", "Tag/Nacht-Vergleich Regelgüte Stat. Heizung Geb.06",
+        fx.fig_day_night_regelguete(
+            df_disp, "Stat. Heizung Geb.06 VL (Soll)", "Stat. Heizung Geb.06 VL (Ist)", "Stat. Heizung Geb.06 Pumpe",
+            "Tag/Nacht-Vergleich Regelgüte Stat. Heizung Geb.06", th.heizkoerper_limit,
+            "Zulässige Vorlauftemp. (Heizkörper)"),
+        "Trend von Soll- und Ist-Vorlauftemperatur getrennt nach Tag- (06–18 Uhr) und Nachtbetrieb (18–06 Uhr, "
+        "Annahme) über die gesamte Messperiode, darunter die jeweilige Pumpenlaufzeit. Ein nahezu identisches "
+        "Bild in beiden Panels deutet auf eine fehlende oder wirkungslose Nachtabsenkung hin.",
     ))
 
     figs.append(FigureEntry(
@@ -148,6 +159,16 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
         "Vergleich der Soll- mit der Ist-Vorlauftemperatur der Fußbodenheizung Gebäude 06. Die rote gestrichelte "
         f"Linie ist die Auslegungsgrenze dieses Niedertemperatursystems ({th.fbh_limit:.0f} °C, Annahme – "
         "im Einstellungsmenü anpassbar).",
+    ))
+
+    figs.append(FigureEntry(
+        "tag_nacht_fbh", "Tag/Nacht-Vergleich Regelgüte FBH Geb.06",
+        fx.fig_day_night_regelguete(
+            df_disp, "FBH Geb.06 VL (Soll)", "FBH Geb.06 VL (Ist)", "FBH Geb.06 Pumpe",
+            "Tag/Nacht-Vergleich Regelgüte FBH Geb.06", th.fbh_limit, "Zulässige Vorlauftemp. (Fußbodenheizung)"),
+        "Trend von Soll- und Ist-Vorlauftemperatur getrennt nach Tag- und Nachtbetrieb (Annahme: 06–18 bzw. "
+        "18–06 Uhr) über die gesamte Messperiode, darunter die Pumpenlaufzeit. Ergänzt die Carpetplots um den "
+        "langfristigen Trend und macht eine fehlende Nachtabsenkung unmittelbar sichtbar.",
     ))
 
     # Hydraulischer Abgleich vergleicht, ob PARALLELE Kreise DESSELBEN Systemtyps gleichmaessig versorgt

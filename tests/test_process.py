@@ -165,8 +165,8 @@ def test_report_follows_required_structure_and_thesis_numbering(df, monkeypatch,
         assert any(keyword in h for h in headings), keyword
     assert [h.split(" ", 1)[1] for h in headings[:len(REPORT_SECTIONS)]] == REPORT_SECTIONS
     assert any(t.startswith("Abbildung 1: Messdatenkopf") for t in paras)
-    assert any(t.startswith("Abbildung 4: Heizkurve") for t in paras)
-    assert any(t.startswith("Abbildung 5: RLT primär VL") for t in paras)
+    assert any(t.startswith("Abbildung 5: Heizkurve") for t in paras)
+    assert any(t.startswith("Abbildung 6: RLT primär VL") for t in paras)
 
 
 @needs_data

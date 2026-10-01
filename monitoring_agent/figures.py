@@ -2,7 +2,7 @@
 Grafische Aufbereitung - automatisierter Ersatz fuer Kapitel 6.3 der Hausarbeit.
 
 Jede Funktion liefert eine plotly.graph_objects.Figure fuer genau eine der in
-Kapitel 6.3 beschriebenen Abbildungen (Abbildung 2-12). Die Konfigurationslogik
+Kapitel 6.3 beschriebenen Abbildungen (Abbildung 2-18). Die Konfigurationslogik
 (keine Sekundaerachsen bei gleichen Einheiten, fixierte Farbskalen bei
 Carpetplots, Scatter+Trendlinie bei Heizkurven, fixierte y-Achse bei
 Binaerwerten) folgt Kapitel 5.2 der Hausarbeit.
@@ -17,6 +17,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Okabe-Ito: farbfehlsichtigkeitssichere Kategorialpalette
 BLUE = "#0072B2"
@@ -61,7 +62,7 @@ def fig_meter_cumulative(df: pd.DataFrame, col: str, title: str, unit: str = "kW
 
 
 def fig_soll_ist(df: pd.DataFrame, soll_col: str, ist_col: str, title: str, unit: str = "°C") -> go.Figure:
-    """Abbildung 3 / 7: Regelguete - Soll- vs. Ist-Vorlauftemperatur.
+    """Abbildung 3 / 8: Regelguete - Soll- vs. Ist-Vorlauftemperatur.
     Gleiche Einheit -> eine gemeinsame y-Achse (keine Sekundaerachse)."""
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -76,9 +77,78 @@ def fig_soll_ist(df: pd.DataFrame, soll_col: str, ist_col: str, title: str, unit
     return fig
 
 
+# Tagbetrieb/Nachtbetrieb fuer den Tag/Nacht-Vergleich - uebliche Nutzungszeiten eines Buerogebaeudes
+# (Annahme), bewusst getrennt von NIGHT_START/NIGHT_END (22-06 Uhr, "sicher Nacht" fuer die
+# Carpetplot-Markierung weiter unten in dieser Datei): hier geht es um den Vergleich zweier Betriebsfenster
+# ueber die gesamte Messperiode, nicht um eine Abdunkelung innerhalb eines einzelnen Carpetplots.
+TAG_START_H, TAG_END_H = 6, 18
+
+
+def fig_day_night_regelguete(df: pd.DataFrame, soll_col: str, ist_col: str, pump_col: str, title: str,
+                              limit: float, limit_label: str, unit: str = "°C") -> go.Figure:
+    """Vergleicht Tag- (06-18 Uhr) und Nachtbetrieb (18-06 Uhr, Annahme) ueber die gesamte Messperiode:
+    je ein Soll-/Ist-Vorlauf-Panel mit taeglichem Ist-Trend (die 15-Min-Rohwerte streuen zu stark, um den
+    saisonalen Verlauf direkt abzulesen) sowie darunter die Pumpenlaufzeit. Ergaenzt die Carpetplots
+    (Tagesstruktur eines einzelnen Zeitfensters) um den langfristigen Trend - zeigt auf einen Blick, ob
+    sich Tag- und Nachtbetrieb ueberhaupt unterscheiden (wirksame Nachtabsenkung?)."""
+    hour = df.index.hour
+    day_mask = (hour >= TAG_START_H) & (hour < TAG_END_H)
+    windows = [
+        ("Tag", f"Tagbetrieb ({TAG_START_H:02d}:00–{TAG_END_H:02d}:00 Uhr): Temperaturen", day_mask, ORANGE, GREEN),
+        ("Nacht", f"Nachtbetrieb ({TAG_END_H:02d}:00–{TAG_START_H:02d}:00 Uhr): Temperaturen", ~day_mask, BLUE, SKY),
+    ]
+
+    fig = make_subplots(
+        rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.035,
+        row_heights=[0.33, 0.1, 0.33, 0.1],
+        subplot_titles=(windows[0][1], "", windows[1][1], ""),
+    )
+    for i, (label, _, mask, trend_color, pump_color) in enumerate(windows):
+        temp_row, pump_row = i * 2 + 1, i * 2 + 2
+        sub = df.loc[mask]
+        trend = sub[ist_col].resample("D").mean()
+        pump_daily = sub[pump_col].resample("D").mean()
+
+        fig.add_trace(go.Scatter(
+            x=sub.index, y=sub[soll_col], mode="lines", name=f"Soll-Vorlauf ({label})", opacity=0.7,
+            line=dict(color=COLOR_SOLL, width=1, dash="dash"),
+        ), row=temp_row, col=1)
+        fig.add_trace(go.Scattergl(
+            x=sub.index, y=sub[ist_col], mode="markers", name=f"Ist-Vorlauf ({label})",
+            marker=dict(color=trend_color, size=2.5, opacity=0.25),
+        ), row=temp_row, col=1)
+        fig.add_trace(go.Scatter(
+            x=trend.index, y=trend.values, mode="lines", name=f"Trend Ist ({label})",
+            line=dict(color=trend_color, width=2.6),
+        ), row=temp_row, col=1)
+        fig.update_yaxes(title_text=f"Temperatur ({unit})", row=temp_row, col=1)
+        fig.add_hline(
+            y=limit, line_color=LIMIT_LINE_COLOR, line_width=2, line_dash="dash",
+            annotation_text=f"{limit_label}: {limit:.0f} {unit}" if i == 0 else "",
+            annotation_font=dict(size=10, color=LIMIT_LINE_COLOR), annotation_position="top left",
+            row=temp_row, col=1,
+        )
+
+        fig.add_trace(go.Bar(
+            x=pump_daily.index, y=pump_daily.values, name=f"Pumpe {label} (Anteil Zeit an)",
+            marker_color=pump_color,
+        ), row=pump_row, col=1)
+        fig.update_yaxes(range=[0, 1], tickvals=[0, 1], ticktext=["Aus (0)", "Ein (1)"],
+                          title_text="Pumpe", row=pump_row, col=1)
+
+    fig.update_xaxes(title_text="Zeit", row=4, col=1)
+    fig.update_layout(
+        title=dict(text=title, font=dict(size=15, family="Arial, sans-serif")),
+        template=TEMPLATE, font=FONT, height=780, hovermode="closest",
+        legend=dict(orientation="h", yanchor="bottom", y=1.08, xanchor="right", x=1, font=dict(size=10)),
+        margin=dict(l=60, r=30, t=90, b=50),
+    )
+    return fig
+
+
 def fig_heating_curve(df: pd.DataFrame, aul_col: str, vl_col: str, title: str,
                        x_label: str = "Außentemperatur (°C)", y_label: str = "Vorlauftemperatur (°C)") -> go.Figure:
-    """Abbildung 4: Heizkurve - Streudiagramm mit Regressionslinie (unverbundene
+    """Abbildung 5: Heizkurve - Streudiagramm mit Regressionslinie (unverbundene
     Punktwolke, Trendlinie ueber lineare Regression)."""
     sub = df[[aul_col, vl_col]].dropna()
     x, y = sub[aul_col].to_numpy(), sub[vl_col].to_numpy()
@@ -102,7 +172,7 @@ def fig_heating_curve(df: pd.DataFrame, aul_col: str, vl_col: str, title: str,
 
 def fig_carpet(df: pd.DataFrame, value_col: str, year: int, month: int, title: str,
                zmin: float | None = None, zmax: float | None = None, unit: str = "°C") -> go.Figure:
-    """Abbildung 5 / 6: Carpetplot als farbcodierte Heatmap.
+    """Abbildung 6 / 7: Carpetplot als farbcodierte Heatmap.
     Spalten = Kalendertag, Zeilen = Uhrzeit (15-Min-Raster), siehe Kap. 5.2.
     Farbskala fix auf reale Betriebsgrenzen (kein Auto-Scaling)."""
     sub = df.loc[(df.index.year == year) & (df.index.month == month), [value_col]].copy()
@@ -363,7 +433,7 @@ def fig_carpet_window(df: pd.DataFrame, value_col: str, granularity: str, anchor
 
 def fig_zone_comparison(df: pd.DataFrame, series: list[tuple[str, str]], title: str,
                          unit: str = "°C") -> go.Figure:
-    """Abbildung 8: Zonenvergleich mehrerer Vorlauftemperaturen (>=2 Serien ->
+    """Abbildung 10: Zonenvergleich mehrerer Vorlauftemperaturen (>=2 Serien ->
     Legende Pflicht, feste Kategorialfarben nach Zone statt Reihenfolge)."""
     fig = go.Figure()
     for (label, col), color in zip(series, ZONE_PALETTE):
@@ -376,7 +446,7 @@ def fig_zone_comparison(df: pd.DataFrame, series: list[tuple[str, str]], title: 
 
 
 def fig_delta_t(df: pd.DataFrame, series: list[tuple[str, str, str]], title: str) -> go.Figure:
-    """Abbildung 9: Temperaturspreizung (Delta T = VL - RL) je System ueber die Zeit.
+    """Abbildung 12: Temperaturspreizung (Delta T = VL - RL) je System ueber die Zeit.
     `series`: Liste aus (Label, VL-Spalte, RL-Spalte)."""
     fig = go.Figure()
     for (label, vl_col, rl_col), color in zip(series, ZONE_PALETTE):
@@ -392,7 +462,7 @@ def fig_delta_t(df: pd.DataFrame, series: list[tuple[str, str, str]], title: str
 
 def fig_two_series(df: pd.DataFrame, col_a: str, label_a: str, col_b: str, label_b: str,
                     title: str, unit: str = "°C") -> go.Figure:
-    """Abbildung 10: z.B. Außenluft- vs. Zulufttemperatur (gleiche Einheit -> eine y-Achse)."""
+    """Abbildung 13: z.B. Außenluft- vs. Zulufttemperatur (gleiche Einheit -> eine y-Achse)."""
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df.index, y=df[col_a], mode="lines", name=label_a,
                               line=dict(color=BLUE, width=1.5)))
@@ -403,7 +473,7 @@ def fig_two_series(df: pd.DataFrame, col_a: str, label_a: str, col_b: str, label
 
 
 def fig_daily_lines(daily: dict[str, pd.Series], title: str, unit: str = "kWh") -> go.Figure:
-    """Abbildung 11: taegliche Verbrauchswerte (z.B. Strom RLT-Ventilatoren) als Liniendiagramm."""
+    """Abbildung 14: taegliche Verbrauchswerte (z.B. Strom RLT-Ventilatoren) als Liniendiagramm."""
     fig = go.Figure()
     for (label, s), color in zip(daily.items(), ZONE_PALETTE):
         fig.add_trace(go.Scatter(x=s.index, y=s.values, mode="lines+markers", name=label,
@@ -413,7 +483,7 @@ def fig_daily_lines(daily: dict[str, pd.Series], title: str, unit: str = "kWh") 
 
 
 def fig_daily_bar(daily: pd.Series, title: str, unit: str = "kWh") -> go.Figure:
-    """Abbildung 12: taeglicher Waermeverbrauch als Saeulendiagramm."""
+    """Abbildung 15: taeglicher Waermeverbrauch als Saeulendiagramm."""
     fig = go.Figure(go.Bar(x=daily.index, y=daily.values, marker_color=COLOR_IST, name=title))
     fig.update_layout(**_base_layout(title, f"Verbrauch ({unit})", "Datum"))
     fig.update_layout(showlegend=False)
@@ -469,7 +539,7 @@ def add_anomaly_markers(fig: go.Figure, x, y, name: str, color: str = "#C00000")
 
 
 def fig_pump_runtime(monthly: pd.DataFrame, title: str) -> go.Figure:
-    """Abbildung 13: Monatliche Laufzeit der Heizkreispumpen in Stunden."""
+    """Abbildung 16: Monatliche Laufzeit der Heizkreispumpen in Stunden."""
     fig = go.Figure()
     for label, color in zip(monthly.columns, ZONE_PALETTE):
         fig.add_trace(go.Bar(x=monthly.index, y=monthly[label], name=label, marker_color=color))
@@ -479,7 +549,7 @@ def fig_pump_runtime(monthly: pd.DataFrame, title: str) -> go.Figure:
 
 
 def fig_availability(avail: pd.DataFrame, title: str) -> go.Figure:
-    """Abbildung 14: Datenverfuegbarkeit je Spalte und Tag (Anzahl fehlerhafter Zeitschritte)."""
+    """Abbildung 17: Datenverfuegbarkeit je Spalte und Tag (Anzahl fehlerhafter Zeitschritte)."""
     fig = go.Figure(go.Heatmap(
         z=avail.T.values, x=avail.index, y=avail.columns, colorscale="Reds", zmin=0,
         zmax=max(3, float(avail.values.max())),
