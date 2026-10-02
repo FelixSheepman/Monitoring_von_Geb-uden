@@ -41,8 +41,12 @@ figcaption{font-size:.9rem;color:var(--muted);margin-top:.2em}
 .note{color:var(--muted);font-size:.85rem}
 nav{display:flex;flex-wrap:wrap;gap:4px 18px;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:8px 16px;margin:1em 0}
 nav a{color:var(--navy)}
+@page{size:A4;margin:14mm}
 @media print{
   nav{display:none}
+  main{max-width:none;padding:0}
+  figure img{max-height:200mm;object-fit:contain}
+  tr{break-inside:avoid}
   h2{break-after:avoid}
   figure{break-inside:avoid}
   /* Hohe Carpetplots (bis 980px, z.B. Wochenansicht mit Zellbeschriftung) wuerden eine A4-Seite sonst
@@ -86,9 +90,17 @@ def _kpi(value: str, label: str) -> str:
 
 
 def export_html(report, path, narrative=None, comparison=None, include_savings: bool = True,
-                include_assessment: bool = True, title: str = "Monitoringbericht") -> None:
+                include_assessment: bool = True, title: str = "Monitoringbericht",
+                static_figures: bool = False) -> list[str]:
+    """`static_figures=True` bettet die Diagramme als PNG statt als interaktives plotly ein (ohne JavaScript,
+    deutlich kleiner) - Grundlage fuer den PDF-Export (pdf_export.py). Gibt Warnungen zurueck."""
+    import base64
+
     import plotly.graph_objects as go
     from plotly.offline import get_plotlyjs
+
+    warnings: list[str] = []
+    missing_images = 0
 
     from .assessment import assessment_texts, theory_vs_practice
     from .extras import savings_explanations
@@ -136,13 +148,26 @@ def export_html(report, path, narrative=None, comparison=None, include_savings: 
 
     # 3 Grafische Aufbereitung und Auswertung
     section(2)
-    out.append('<p class="note">Zu jeder Abbildung folgt direkt die zugehörige Auswertung. Die Diagramme sind '
-               "interaktiv: Zoomen mit der Maus, Bereich per Doppelklick zurücksetzen, Reihen über die Legende ein- und ausblenden.</p>")
+    if static_figures:
+        out.append('<p class="note">Zu jeder Abbildung folgt direkt die zugehörige Auswertung.</p>')
+    else:
+        out.append('<p class="note">Zu jeder Abbildung folgt direkt die zugehörige Auswertung. Die Diagramme sind '
+                   "interaktiv: Zoomen mit der Maus, Bereich per Doppelklick zurücksetzen, Reihen über die Legende ein- und ausblenden.</p>")
     fig_no = {e.key: i for i, e in enumerate(report.figures, start=2)}
     for entry in report.figures:
-        fig = go.Figure(entry.figure)  # Kopie: das gecachte Original der App bleibt unverändert
-        fig.update_layout(autosize=True, width=None)
-        out.append("<figure>" + fig.to_html(full_html=False, include_plotlyjs=False, config={"responsive": True})
+        if static_figures:
+            from .word_export import _figure_png
+            png = _figure_png(entry.figure)
+            if png:
+                figure_html = f'<img alt="{html.escape(entry.title)}" style="width:100%" src="data:image/png;base64,{base64.b64encode(png).decode()}">'
+            else:
+                missing_images += 1
+                figure_html = "<p><i>[Abbildung konnte nicht gerendert werden]</i></p>"
+        else:
+            fig = go.Figure(entry.figure)  # Kopie: das gecachte Original der App bleibt unverändert
+            fig.update_layout(autosize=True, width=None)
+            figure_html = fig.to_html(full_html=False, include_plotlyjs=False, config={"responsive": True})
+        out.append("<figure>" + figure_html
                    + f"<figcaption><b>Abbildung {fig_no[entry.key]}: {html.escape(entry.title)}.</b> "
                      f"{html.escape(entry.caption)}</figcaption></figure>")
         for b in placed.get(entry.key, []):
@@ -199,12 +224,17 @@ def export_html(report, path, narrative=None, comparison=None, include_savings: 
         out.append(f'<h2 id="s6">{len(REPORT_SECTIONS) + 1} Vergleich manuelle Auswertung / Agent</h2>')
         out.append(_table(comparison[["Spalte", "Manuell", "Agent", "Ergebnis", "Manueller_Befund", "Agent_Befund"]]))
 
+    if missing_images:
+        warnings.append(f"{missing_images} Abbildung(en) konnten nicht als Bild eingefügt werden "
+                        "(Diagramm-Rendering benötigt einen installierten Chrome/Chromium-Browser).")
+    script = "" if static_figures else f"<script>{get_plotlyjs()}</script>"
     page = (f'<!doctype html><html lang="de"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width,initial-scale=1">'
             f"<title>{html.escape(title)}</title><style>{CSS}</style>"
-            f"<script>{get_plotlyjs()}</script></head><body><main>{''.join(out)}</main></body></html>")
+            f"{script}</head><body><main>{''.join(out)}</main></body></html>")
     if hasattr(path, "write"):
         path.write(page.encode("utf-8"))
     else:
         with open(path, "w", encoding="utf-8") as f:
             f.write(page)
+    return warnings

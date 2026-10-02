@@ -143,8 +143,8 @@ def fig_day_night_regelguete(df: pd.DataFrame, soll_col: str, ist_col: str, pump
     fig.update_layout(
         title=dict(text=title, font=dict(size=15, family="Arial, sans-serif")),
         template=TEMPLATE, font=FONT, height=780, hovermode="closest",
-        legend=dict(orientation="h", yanchor="bottom", y=1.08, xanchor="right", x=1, font=dict(size=10)),
-        margin=dict(l=60, r=30, t=90, b=50),
+        legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="right", x=1, font=dict(size=10)),
+        margin=dict(l=60, r=30, t=150, b=50),
     )
     return fig
 

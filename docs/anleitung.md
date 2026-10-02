@@ -13,7 +13,7 @@ Beim Technischen Monitoring von Nichtwohngebäuden fallen immer wiederkehrende A
 - **Auswertungstexte**, deren Zahlen live aus euren Daten berechnet werden,
 - eine Abschätzung des **Energieeinsparpotenzials** und eine **Bewertung** aller Befunde nach Schweregrad mit Empfehlungen,
 - **Kontrollkriterien** für jeden Zwischenschritt mit automatischer Prüfung und einen **Entwurf für Kapitel 8** (Vergleich mit der manuellen Auswertung),
-- einen **Word-Bericht** und eine **Excel-Arbeitsmappe** zum Weiterverwenden.
+- einen **Word-Bericht**, einen **PDF-Bericht** und eine **Excel-Arbeitsmappe** zum Weiterverwenden.
 
 **Wichtig zum Einordnen:** Das Tool ersetzt keine fachliche Bewertung. Es liefert belastbare Zahlen und Hinweise. Ob eine Auffälligkeit ein Fehler ist, beurteilt ihr mit Kenntnis der Anlage.
 
@@ -114,7 +114,7 @@ Zeitraum, Anzahl der Messpunkte, Zahl der plausiblen und der auffälligen Spalte
 | **🧭 Vorgehen** | Zwischenschritte, Kontrollkriterien mit automatischer Prüfung, Aufbau des KI-Agenten, Sensorik-Übersicht, Diagrammtypen |
 | **🎓 Forschung** | Antwortentwürfe zu den Forschungsfragen (Kap. 9), Theorie-Praxis-Abgleich, Empfehlungen und Ausblick (Kap. 10) |
 | **🔎 Explorer** | Eigene Diagramme frei zusammenstellen |
-| **⬇️ Export** | Word-Bericht, Kapitel-8-Entwurf und Excel-Arbeitsmappe erzeugen |
+| **⬇️ Export** | HTML-, PDF- und Word-Bericht, Kapitel-8-Entwurf und Excel-Arbeitsmappe erzeugen |
 | **🗺️ Funktionsweise** | Ablaufpläne: wie Claude Code gearbeitet hat, wie das Tool aufgebaut ist und wo Subagenten eingesetzt wurden (keine) |
 | **📖 Anleitung** | Diese Anleitung |
 
@@ -244,6 +244,8 @@ Dieselbe Auflösung und dieselben Overlays gibt es auch im Tab **🏢 Gebäude**
 3. Auf **monitoring_bericht.docx** klicken.
 
 **HTML-Bericht zum Verschicken:** Im Tab **⬇️ Export** erzeugt **HTML-Bericht erzeugen** eine einzige Datei mit demselben Inhalt wie der Word-Bericht. Sie öffnet sich per Doppelklick in jedem Browser, ohne Python und ohne Internet, und die Diagramme bleiben interaktiv. Das ist der einfachste Weg, Ergebnisse an Betreuer zu schicken.
+
+**PDF-Bericht:** Im Tab **⬇️ Export** erzeugt **PDF-Bericht erzeugen** denselben Bericht als druckfertiges PDF (A4, Diagramme als Bilder, Tabellen mit Ampelfarben). Das Erzeugen dauert etwa eine Minute, weil alle Abbildungen gerendert werden. Dafür wird wie beim Word-Bericht ein Chrome/Chromium/Edge-Browser gebraucht; ist keiner vorhanden, weist die App darauf hin. Ersatzweise lässt sich der HTML-Bericht im Browser mit Strg+P als PDF speichern.
 
 **Aufbau des Berichts** (in Anlehnung an Kapitel 6 der Hausarbeit): 1 Einleitung und Datengrundlage, 2 Datenprüfung (mit Messdatenkopf als Abbildung 1), 3 Grafische Aufbereitung und Auswertung (jeder Text steht direkt unter seiner Abbildung, Nummerierung wie in der Arbeit), 4 Energieeinsparpotenzial, 5 Bewertung der Ergebnisse, 6 Zusammenfassung und Empfehlungen (mit Theorie-Praxis-Abgleich), 7 Vergleich mit der manuellen Auswertung.
 
@@ -412,7 +414,7 @@ Weicht innerhalb einer dieser beiden Gruppen eine Zone deutlich von den anderen 
 | Rote Meldung „Folgende erwartete Spalten fehlen“ | Die Datei hat ein anderes Layout. Prüft Blattname, Kopfzeile in Zeile 7 und die Spaltennamen (Abschnitt 3.2) |
 | Die App braucht lange | Das Einlesen der Excel-Datei dauert 10 bis 15 Sekunden. Danach sind Änderungen an Reglern schnell |
 | Diagramme sehen sehr unruhig aus | Unter „Darstellung Zeitreihen“ auf Stunden- oder Tagesmittel umstellen |
-| Im Word-Bericht fehlen die Diagramme | Dem Rechner oder Server fehlt ein Chrome/Chromium-Browser für das Bildrendern. Lokal Chrome installieren, in der Cloud die Datei `packages.txt` mit `chromium` prüfen. Ersatzweise die Excel-Arbeitsmappe nutzen |
+| Im Word- oder PDF-Bericht fehlen die Diagramme | Dem Rechner oder Server fehlt ein Chrome/Chromium-Browser für das Bildrendern. Lokal Chrome installieren, in der Cloud die Datei `packages.txt` mit `chromium` prüfen. Ersatzweise die Excel-Arbeitsmappe nutzen |
 | Der Knopf „Auswertung mit Claude erzeugen“ fehlt | Schalter „LLM-Auswertung (Claude)“ einschalten und API-Key eintragen |
 | Ein Tab fehlt (Bewertung, Vergleich, Vorgehen, Forschung, Explorer) | Die zugehörige Funktion ist unter „Einstellungen“ ausgeschaltet |
 | Ein Kriterium steht auf „nicht bewertbar“ | Es fehlt eine Referenz, meist die manuelle Bewertung aus Kapitel 6.5 (`reference/manual_bewertung.csv`) oder die Min-/Max-Zeilen in der Excel-Kopfzeile |
@@ -448,6 +450,7 @@ Für wiederkehrende Auswertungen, zum Beispiel jeden Monat mit neuen Daten:
 | `--docx` | Zusätzlich einen Word-Bericht erzeugen |
 | `--anomalies` | Anomalien in den Diagrammen markieren |
 | `--html` | Zusätzlich einen HTML-Bericht erzeugen: eine einzelne Datei, die sich ohne Installation im Browser öffnen lässt |
+| `--pdf` | Zusätzlich einen PDF-Bericht erzeugen (braucht Chrome, Chromium oder Edge) |
 | `--exclude-invalid` | Eindeutig fehlerhafte Werte von der Auswertung ausschließen (siehe 6.12); das Protokoll steht im Excel-Blatt „Ausgeschlossene Werte“ |
 | `--carpet-year`, `--carpet-month`, `--carpet-day` | Zeitpunkt der Carpetplots, je nach `--carpet-granularity` (Standard: Februar 2025) |
 | `--carpet-granularity` | Zeitfenster der Carpetplots: `Jahr`, `Monat` (Standard), `Woche` oder `Tag` (siehe 6.3) |

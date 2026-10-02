@@ -36,6 +36,48 @@ def test_html_report_is_complete(page):
     assert "Vergleich manuelle Auswertung / Agent" in text
 
 
+_PNG_1PX = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360f8cfc0f01f0005"
+    "00010150a1d7d70000000049454e44ae426082")
+
+
+@needs_data
+def test_static_html_embeds_figures_as_images_without_plotly(tmp_path, monkeypatch):
+    """Grundlage des PDF-Exports: Diagramme als PNG, kein plotly.js, Warnung bei fehlendem Rendering."""
+    from monitoring_agent import word_export
+    report = build_report(load_measurements(DATA), display_resample="D")
+    monkeypatch.setattr(word_export, "_figure_png", lambda fig: _PNG_1PX)
+    path = tmp_path / "s.html"
+    assert export_html(report, path, static_figures=True) == []
+    text = path.read_text(encoding="utf-8")
+    assert text.count("data:image/png;base64") == len(report.figures)
+    assert "Plotly.newPlot" not in text and len(text) < 3_000_000
+    monkeypatch.setattr(word_export, "_figure_png", lambda fig: None)
+    warnings = export_html(report, path, static_figures=True)
+    assert warnings and "konnten nicht als Bild" in warnings[0]
+
+
+@needs_data
+def test_pdf_export_writes_a_pdf_with_the_report(tmp_path, monkeypatch):
+    from monitoring_agent import word_export
+    from monitoring_agent.pdf_export import export_pdf, find_chrome
+    if find_chrome() is None:
+        pytest.skip("kein Chrome/Chromium/Edge installiert")
+    report = build_report(load_measurements(DATA), display_resample="D")
+    monkeypatch.setattr(word_export, "_figure_png", lambda fig: _PNG_1PX)
+    path = tmp_path / "b.pdf"
+    export_pdf(report, path)
+    data = path.read_bytes()
+    assert data.startswith(b"%PDF") and len(data) > 20_000
+
+
+def test_pdf_export_explains_missing_browser(monkeypatch):
+    from monitoring_agent import pdf_export
+    monkeypatch.setattr(pdf_export, "find_chrome", lambda: None)
+    with pytest.raises(RuntimeError, match="Chrome"):
+        pdf_export.export_pdf(object(), "x.pdf")
+
+
 @needs_data
 def test_html_report_works_offline(page):
     text, _ = page

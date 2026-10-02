@@ -26,6 +26,7 @@ from monitoring_agent.data_loader import load_measurements, read_manual_minmax
 from monitoring_agent.exclusion import CLEAR_RULES, clear_only, find_invalid
 from monitoring_agent.excel_export import export_workbook
 from monitoring_agent.html_export import export_html
+from monitoring_agent.pdf_export import export_pdf, find_chrome
 from monitoring_agent.extras import savings_explanations
 from monitoring_agent.llm_agent import MODELS, build_facts, generate_narrative, make_client
 from monitoring_agent import figures as fx
@@ -628,6 +629,30 @@ with tabs["⬇️ Export"]:
     if "html_bytes" in st.session_state:
         st.download_button("📥 monitoring_bericht.html", st.session_state["html_bytes"],
                            file_name="monitoring_bericht.html", mime="text/html")
+    st.divider()
+
+    st.markdown("**PDF-Bericht** – derselbe Bericht als druckfertiges PDF (Diagramme als Bilder), "
+                "zum Ablegen oder Verschicken ohne Browser.")
+    if find_chrome() is None:
+        st.info("Für den PDF-Export wird Google Chrome, Chromium oder Edge benötigt, der hier nicht gefunden wurde. "
+                "Alternative: HTML-Bericht im Browser öffnen und mit Strg+P als PDF speichern.")
+    elif st.button("PDF-Bericht erzeugen"):
+        with st.spinner("Rendere Abbildungen und erzeuge PDF (ca. 1 Minute)..."):
+            buf = io.BytesIO()
+            cmp_pdf = compare_table1(report.quality_df) if settings.show_comparison else None
+            try:
+                st.session_state["pdf_warnings"] = export_pdf(
+                    export_report, buf, narrative=active_narrative, comparison=cmp_pdf,
+                    include_savings=settings.show_savings, include_assessment=settings.show_assessment)
+                st.session_state["pdf_bytes"] = buf.getvalue()
+            except RuntimeError as e:
+                st.session_state.pop("pdf_bytes", None)
+                st.error(str(e))
+    for w in st.session_state.get("pdf_warnings", []):
+        st.warning(w)
+    if "pdf_bytes" in st.session_state:
+        st.download_button("📥 monitoring_bericht.pdf", st.session_state["pdf_bytes"],
+                           file_name="monitoring_bericht.pdf", mime="application/pdf")
     st.divider()
 
     left, right = st.columns(2)

@@ -31,6 +31,7 @@ def main() -> int:
                          help="Pfad der erzeugten Report-.xlsx (Default: monitoring_report.xlsx)")
     parser.add_argument("--docx", help="Optional: zusätzlich einen Word-Bericht (.docx) erzeugen")
     parser.add_argument("--html", help="Optional: zusätzlich einen eigenständigen HTML-Bericht erzeugen (ohne Installation lesbar)")
+    parser.add_argument("--pdf", help="Optional: zusätzlich einen PDF-Bericht erzeugen (braucht Chrome/Chromium/Edge)")
     parser.add_argument("--anomalies", action="store_true", help="Anomalien in den Diagrammen markieren")
     parser.add_argument("--exclude-invalid", action="store_true",
                          help="Eindeutig fehlerhafte Werte (Nullwerte, Werte außerhalb des Bereichs, Zähler-Rücksprünge) "
@@ -77,6 +78,12 @@ def main() -> int:
         from monitoring_agent.html_export import export_html
         export_html(report, args.html, comparison=compare_table1(report.quality_df))
         print(f"HTML-Bericht: {args.html}")
+    if args.pdf:
+        from monitoring_agent.comparison import compare_table1
+        from monitoring_agent.pdf_export import export_pdf
+        for w in export_pdf(report, args.pdf, comparison=compare_table1(report.quality_df)):
+            print("  Hinweis:", w)
+        print(f"PDF-Bericht: {args.pdf}")
     print("Laufzeit: " + ", ".join(f"{k} {v:.2f}s" for k, v in report.timings.items()))
     print("Fertig.")
     return 0
