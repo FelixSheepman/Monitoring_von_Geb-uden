@@ -64,7 +64,8 @@ def main() -> int:
     print(f"  {len(report.quality_df)} Spalten geprüft, davon {n_auffaellig} auffällig")
 
     print(f"Schreibe Report: {args.output}")
-    export_workbook(report, args.output)
+    from monitoring_agent.comparison import compare_table1
+    export_workbook(report, args.output, comparison=compare_table1(report.quality_df))
     if args.docx:
         from monitoring_agent.comparison import compare_table1
         from monitoring_agent.word_export import export_docx

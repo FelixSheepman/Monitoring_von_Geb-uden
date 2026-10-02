@@ -100,6 +100,32 @@ def test_exclusion_is_part_of_excel_and_word_export(df, tmp_path, monkeypatch):
     assert "Nicht berücksichtigte Messwerte" not in "\n".join(p.text for p in Document(str(plain)).paragraphs)
 
 
+@needs_data
+def test_excel_export_includes_savings_assessment_theory_and_comparison_sheets(df, tmp_path):
+    """Die Excel-Arbeitsmappe sollte dieselben Kapitel wie Word/HTML zeigen - vorher fehlten
+    Einsparpotenzial, Bewertung, Theorie-Praxis-Vergleich und der Vergleich mit der manuellen Auswertung."""
+    import openpyxl
+    from monitoring_agent.comparison import compare_table1
+    from monitoring_agent.excel_export import export_workbook
+    rep = build_report(df)
+    xlsx = tmp_path / "full.xlsx"
+    export_workbook(rep, str(xlsx), comparison=compare_table1(rep.quality_df))
+    sheets = openpyxl.load_workbook(xlsx, read_only=True).sheetnames
+    for name in ("Einsparpotenzial", "Bewertung", "Theorie-Praxis-Vergleich", "Vergleich Agent-Manuell"):
+        assert name in sheets, name
+
+
+@needs_data
+def test_excel_export_savings_and_assessment_sheets_are_optional(df, tmp_path):
+    import openpyxl
+    from monitoring_agent.excel_export import export_workbook
+    rep = build_report(df)
+    xlsx = tmp_path / "minimal.xlsx"
+    export_workbook(rep, str(xlsx), include_savings=False, include_assessment=False)
+    sheets = set(openpyxl.load_workbook(xlsx, read_only=True).sheetnames)
+    assert not {"Einsparpotenzial", "Bewertung", "Theorie-Praxis-Vergleich", "Vergleich Agent-Manuell"} & sheets
+
+
 def test_synthetic_range_and_pair_rules():
     from monitoring_agent.config import COLUMNS
     idx = pd.date_range("2025-01-01", periods=6, freq="15min")

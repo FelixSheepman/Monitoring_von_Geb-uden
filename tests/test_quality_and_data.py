@@ -151,6 +151,30 @@ def test_llm_agent_refusal_raises():
         generate_narrative("{}", _FakeClient("[]", stop_reason="refusal"), "claude-sonnet-5")
 
 
+class _BrokenClient:
+    """Simuliert einen Netzwerk-/API-Fehler (z.B. Timeout, Rate-Limit) statt einer Antwort."""
+    def __init__(self):
+        self.messages = SimpleNamespace(create=self._create)
+
+    def _create(self, **kwargs):
+        raise ConnectionError("Connection reset")
+
+
+def test_llm_agent_wraps_api_errors_as_runtime_error():
+    with pytest.raises(RuntimeError, match="Claude-Aufruf ist fehlgeschlagen"):
+        generate_narrative("{}", _BrokenClient(), "claude-sonnet-5")
+
+
+def test_parse_blocks_rejects_malformed_json():
+    with pytest.raises(ValueError, match="kein gültiges JSON"):
+        parse_blocks("Hier: [{heading kaputt]")
+
+
+def test_parse_blocks_rejects_missing_fields():
+    with pytest.raises(ValueError, match="kein 'heading' oder 'text'"):
+        parse_blocks('[{"figure_keys": []}]')
+
+
 # --- Erweiterungen: Regelsatz v2, Extras, Schwellenwerte ---
 
 from monitoring_agent.extras import availability_daily, pump_runtime_monthly, savings_potential

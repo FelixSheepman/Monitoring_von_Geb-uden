@@ -8,6 +8,9 @@ Hausarbeit), aber automatisch erzeugt:
   Excel-Chart-Objekt (weiterhin in Excel bearbeitbar)
 - Carpetplot-Blaetter ueber Pivot + bedingte Formatierung (3-Farben-Skala,
   fixe Grenzwerte) - exakt die in Kap. 5.2 beschriebene Technik
+- Blaetter "Einsparpotenzial" (Kap. 4), "Bewertung" (Kap. 5, mit Schweregrad-Ampel),
+  "Theorie-Praxis-Vergleich" (Kap. 6) und "Vergleich Agent-Manuell" (Kap. 8) - dieselben
+  Tabellen wie in Word-/HTML-Export, damit alle drei Formate denselben Bericht zeigen
 
 Zeitreihen mit 15-Min-Raster werden fuer die Excel-Charts auf Stundenwerte
 verdichtet (Performance/Lesbarkeit); die interaktive Web-App zeigt die volle
@@ -24,6 +27,13 @@ from .metrics import daily_consumption
 HEADER_FMT = dict(bold=True, bg_color="#1F3864", font_color="white", border=1)
 PLAUSIBEL_FMT = dict(bg_color="#C6EFCE", font_color="#006100")
 AUFFAELLIG_FMT = dict(bg_color="#FFC7CE", font_color="#9C0006")
+AMBER_FMT = dict(bg_color="#FFE699", font_color="#9C6500")
+# Gleiche Einstufung wie in word_export.py/html_export.py (SEVERITY_COLORS/STATUS_COLORS), damit alle
+# drei Exportformate dieselben Befunde farblich gleich darstellen.
+SEVERITY_FMT = {"hoch": AUFFAELLIG_FMT, "mittel": AMBER_FMT, "gering": PLAUSIBEL_FMT}
+STATUS_FMT = {"erfüllt": PLAUSIBEL_FMT, "nicht erfüllt": AUFFAELLIG_FMT, "nicht bewertbar": AMBER_FMT,
+              "übereinstimmend": PLAUSIBEL_FMT, "nur Agent auffällig": AUFFAELLIG_FMT,
+              "nur manuell auffällig": AUFFAELLIG_FMT}
 
 
 def _write_quality_sheet(wb: xlsxwriter.Workbook, quality_df: pd.DataFrame) -> None:
@@ -187,7 +197,77 @@ def _write_narrative_sheet(wb: xlsxwriter.Workbook, narrative) -> None:
     ws.set_column(0, 4, 26)
 
 
-def export_workbook(report, path: str) -> None:
+def _write_df_sheet(wb: xlsxwriter.Workbook, sheet_name: str, df: pd.DataFrame, intro: str = "",
+                     status_col: str | None = None, status_fmt: dict[str, dict] | None = None,
+                     col_widths: list[int] | None = None) -> None:
+    """Tabellenblatt mit Kopfzeile, optionalem Einleitungstext und optionaler Ampel-Farbcodierung
+    einer Statusspalte - das Excel-Gegenstueck zu word_export._table()/html_export._table()."""
+    ws = wb.add_worksheet(sheet_name[:31])
+    header_fmt = wb.add_format(HEADER_FMT)
+    wrap_fmt = wb.add_format({"text_wrap": True, "valign": "top"})
+    status_fmts = {k: wb.add_format(v) for k, v in (status_fmt or {}).items()}
+    row = 0
+    if intro:
+        ws.merge_range(row, 0, row, max(len(df.columns) - 1, 1),
+                        intro, wb.add_format({"text_wrap": True, "valign": "top", "bold": True}))
+        ws.set_row(row, 32)
+        row += 2
+    header_row = row
+    for j, col in enumerate(df.columns):
+        ws.write(row, j, col, header_fmt)
+    for _, r in df.iterrows():
+        row += 1
+        for j, col in enumerate(df.columns):
+            fmt = wrap_fmt
+            if status_col and col == status_col:
+                fmt = status_fmts.get(str(r[col]), wrap_fmt)
+            val = r[col]
+            if isinstance(val, float) and pd.notna(val):
+                ws.write_number(row, j, val, fmt)
+            else:
+                ws.write(row, j, "" if pd.isna(val) else val, fmt)
+    for j, w in enumerate(col_widths or [20] * len(df.columns)):
+        ws.set_column(j, j, w)
+    ws.freeze_panes(header_row + 1, 0)
+
+
+def _write_savings_sheet(wb: xlsxwriter.Workbook, savings: pd.DataFrame) -> None:
+    _write_df_sheet(
+        wb, "Einsparpotenzial", savings,
+        intro="Abschätzung des Energieeinsparpotenzials auf Basis der gemessenen Verbräuche (Annahmen siehe Spalte "
+              "„Annahme“; Details siehe Kapitel 4 des Berichts).",
+        col_widths=[32, 55, 16, 14, 12])
+
+
+def _write_assessment_sheet(wb: xlsxwriter.Workbook, assessment: pd.DataFrame) -> None:
+    cols = [c for c in ["Nr.", "Befund", "Schweregrad", "Kennzahl", "Empfehlung", "Einstufungsregel", "Hinweis"]
+            if c in assessment.columns]
+    _write_df_sheet(
+        wb, "Bewertung", assessment[cols],
+        intro="Bewertung und Priorisierung der Befunde nach Schweregrad (hoch/mittel/gering).",
+        status_col="Schweregrad", status_fmt=SEVERITY_FMT,
+        col_widths=[5, 32, 12, 30, 45, 35, 30])
+
+
+def _write_theory_sheet(wb: xlsxwriter.Workbook, theory: pd.DataFrame) -> None:
+    _write_df_sheet(
+        wb, "Theorie-Praxis-Vergleich", theory,
+        intro="Überprüfung theoretischer Aussagen aus der Hausarbeit anhand der gemessenen Praxiswerte.",
+        col_widths=[45, 10, 45, 35])
+
+
+def _write_comparison_sheet(wb: xlsxwriter.Workbook, comparison: pd.DataFrame) -> None:
+    cols = [c for c in ["Spalte", "Bezeichnung", "Manuell", "Agent", "Ergebnis", "Manueller_Befund", "Agent_Befund"]
+            if c in comparison.columns]
+    _write_df_sheet(
+        wb, "Vergleich Agent-Manuell", comparison[cols],
+        intro="Gegenüberstellung der Datenprüfung: manuelle Auswertung (Kap. 6) gegen den Agent (Kap. 7).",
+        status_col="Ergebnis", status_fmt=STATUS_FMT,
+        col_widths=[8, 32, 14, 14, 20, 35, 35])
+
+
+def export_workbook(report, path: str, comparison: pd.DataFrame | None = None,
+                     include_savings: bool = True, include_assessment: bool = True) -> None:
     df = report.df
     with xlsxwriter.Workbook(path) as wb:
         _write_quality_sheet(wb, report.quality_df)
@@ -252,3 +332,16 @@ def export_workbook(report, path: str) -> None:
         _write_timeseries_chart(wb, "Abb12_Waerme_taeglich", "Täglicher Wärmeverbrauch",
                                  daily_waerme.index, {"Wärmeverbrauch": daily_waerme}, "kWh",
                                  chart_type="column", x_title="Datum")
+
+        # Kapitel 4-6 der Hausarbeit (Einsparpotenzial, Bewertung, Theorie-Praxis-Vergleich) sowie der
+        # Vergleich mit der manuellen Auswertung (Kap. 8) - bisher nur in Word-/HTML-Export enthalten.
+        if include_savings and getattr(report, "savings", None) is not None:
+            _write_savings_sheet(wb, report.savings)
+        if include_assessment and getattr(report, "assessment", None) is not None and len(report.assessment):
+            from .assessment import theory_vs_practice
+            from .settings import Thresholds
+            _write_assessment_sheet(wb, report.assessment)
+            th = getattr(report, "thresholds", None) or Thresholds()
+            _write_theory_sheet(wb, theory_vs_practice(df, th, report.savings if include_savings else None))
+        if comparison is not None and len(comparison):
+            _write_comparison_sheet(wb, comparison)

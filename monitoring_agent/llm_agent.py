@@ -84,9 +84,14 @@ def parse_blocks(text: str) -> list[NarrativeBlock]:
     start, end = text.find("["), text.rfind("]")
     if start < 0 or end < start:
         raise ValueError("Die Modellantwort enthält kein JSON-Array.")
-    items = json.loads(text[start:end + 1])
+    try:
+        items = json.loads(text[start:end + 1])
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Die Modellantwort enthält kein gültiges JSON: {e}") from e
     blocks = []
-    for it in items:
+    for i, it in enumerate(items):
+        if "heading" not in it or "text" not in it:
+            raise ValueError(f"Element {i} der Modellantwort hat kein 'heading' oder 'text'-Feld.")
         keys = [k for k in it.get("figure_keys", []) if k in FIGURE_KEYS]
         blocks.append(NarrativeBlock(keys, str(it["heading"]), str(it["text"])))
     return blocks
@@ -106,7 +111,10 @@ def generate_narrative(facts: str, client, model: str = "claude-opus-5") -> LLMR
         kwargs["extra_body"] = {"fallbacks": "default"}
 
     t0 = time.perf_counter()
-    response = client.messages.create(**kwargs)
+    try:
+        response = client.messages.create(**kwargs)
+    except Exception as e:
+        raise RuntimeError(f"Der Claude-Aufruf ist fehlgeschlagen ({type(e).__name__}): {e}") from e
     seconds = time.perf_counter() - t0
 
     if response.stop_reason == "refusal":

@@ -434,9 +434,12 @@ def fig_carpet_window(df: pd.DataFrame, value_col: str, granularity: str, anchor
 def fig_zone_comparison(df: pd.DataFrame, series: list[tuple[str, str]], title: str,
                          unit: str = "°C") -> go.Figure:
     """Abbildung 10: Zonenvergleich mehrerer Vorlauftemperaturen (>=2 Serien ->
-    Legende Pflicht, feste Kategorialfarben nach Zone statt Reihenfolge)."""
+    Legende Pflicht, feste Kategorialfarben nach Zone statt Reihenfolge). Bei mehr Serien als
+    Palettenfarben (z.B. freie Auswahl im Explorer-Tab) werden die Farben zyklisch wiederverwendet,
+    statt ueberzaehlige Serien stillschweigend wegzulassen (vorheriges Verhalten mit zip())."""
     fig = go.Figure()
-    for (label, col), color in zip(series, ZONE_PALETTE):
+    for i, (label, col) in enumerate(series):
+        color = ZONE_PALETTE[i % len(ZONE_PALETTE)]
         fig.add_trace(go.Scatter(
             x=df.index, y=df[col], mode="lines", name=label,
             line=dict(color=color, width=1.5),

@@ -535,6 +535,9 @@ if settings.show_explorer:
                 if len(units) > 1:
                     st.warning("Verschiedene Einheiten gewählt: " + ", ".join(sorted(units)) +
                                ". Besser getrennt darstellen (keine Sekundärachsen).")
+                if len(picked) > len(fx.ZONE_PALETTE):
+                    st.caption(f"⚠️ Mehr als {len(fx.ZONE_PALETTE)} Spalten gewählt – die Linienfarben "
+                               "wiederholen sich, unterscheidet im Diagramm über die Legende.")
                 st.plotly_chart(fx.fig_zone_comparison(view, [(n, n) for n in picked], "Freie Auswahl",
                                                        unit=", ".join(sorted(units))), width="stretch")
             else:
@@ -608,7 +611,9 @@ with tabs["⬇️ Export"]:
             with st.spinner("Erzeuge Arbeitsmappe..."):
                 with tempfile.TemporaryDirectory() as tmp_dir:
                     tmp_path = Path(tmp_dir) / "monitoring_report.xlsx"
-                    export_workbook(export_report, str(tmp_path))
+                    cmp_xlsx = compare_table1(report.quality_df) if settings.show_comparison else None
+                    export_workbook(export_report, str(tmp_path), comparison=cmp_xlsx,
+                                    include_savings=settings.show_savings, include_assessment=settings.show_assessment)
                     st.session_state["xlsx_bytes"] = tmp_path.read_bytes()
         if "xlsx_bytes" in st.session_state:
             st.download_button("📥 monitoring_report.xlsx", st.session_state["xlsx_bytes"],
