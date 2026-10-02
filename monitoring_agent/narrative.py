@@ -109,9 +109,96 @@ def _zonenvergleich_text(df: pd.DataFrame, fbh_cols: list[tuple[str, str]],
     return NarrativeBlock(["zonenvergleich"], "Hydraulischer Abgleich: Auffällig hohe FBH-Vorlauftemperatur", text)
 
 
-def _delta_t_text(df: pd.DataFrame, pairs: list[tuple[str, str, str]], th: Thresholds) -> NarrativeBlock:
+def _monatsliste(months: list[pd.Timestamp]) -> str:
+    """Aufeinanderfolgende Monate als Bereich, z.B. 'Juni bis August 2025, Dezember 2025'."""
+    groups: list[list[pd.Timestamp]] = []
+    for m in sorted(months):
+        if groups and (m.year * 12 + m.month) - (groups[-1][-1].year * 12 + groups[-1][-1].month) == 1:
+            groups[-1].append(m)
+        else:
+            groups.append([m])
+    return ", ".join(_monat(g[0]) if len(g) == 1 else f"{_MONATE[g[0].month - 1]} bis {_monat(g[-1])}" for g in groups)
+
+
+def _delta_t_details(df: pd.DataFrame, pairs: list[tuple[str, str, str, str]], th: Thresholds) -> str:
+    """Ergaenzung zur Spreizung: Spreizung im Heizbetrieb, Monate mit Spreizung nahe null (samt Pumpenlaufzeit)
+    und negative Spreizungen (Ruecklauf waermer als Vorlauf) mit Abgleich gegen den Pumpenstatus."""
+    ranges, zero_txt, neg_txt = [], [], []
+    for label, vl_col, rl_col, pump_col in pairs:
+        vl, rl, pump = df[vl_col].replace(0, np.nan), df[rl_col].replace(0, np.nan), df[pump_col]
+        dt = (vl - rl).dropna()
+        heiz = dt[(vl.reindex(dt.index) > th.aktiv_schwelle_vl) & dt.index.month.isin(HEIZPERIODE_MONATE)]
+        if len(heiz) > 96:
+            q05, q95 = heiz.quantile([0.05, 0.95])
+            ranges.append(f"{label} im Median {heiz.median():.1f} K ({q05:.1f} K bis {q95:.1f} K im 5.–95. Perzentil)")
+
+        monthly = dt.resample("MS").agg(["median", "size"])
+        near0 = monthly[(monthly["size"] >= 96 * 10) & (monthly["median"] < 1.0)]
+        if len(near0):
+            on = float(pump[dt.index[dt.index.to_period("M").to_timestamp().isin(near0.index)]].mean() * 100)
+            if on >= 50:
+                deut = ("das Heizungswasser zirkuliert dabei ohne nennenswerten Temperaturabfall; laufen die Pumpen ungeregelt "
+                        "weiter, wird elektrische Energie für eine nutzlose Wasserzirkulation aufgewendet")
+            else:
+                deut = ("die Pumpe steht in dieser Zeit überwiegend still, die geringe Spreizung spiegelt also kaum Durchfluss "
+                        "wider und ist für sich kein Hinweis auf vermeidbaren Pumpenstrom")
+            zero_txt.append(f"Bei {label} liegt die Spreizung im Monatsmedian in {_monatsliste(list(near0.index))} unter 1 K "
+                            f"(Pumpe in diesen Monaten zu {on:.0f} % der Zeit in Betrieb); {deut}.")
+
+        neg = dt[dt < 0]
+        if len(neg) >= 50:
+            status = pump.reindex(neg.index).dropna()
+            off = float((status == 0).mean() * 100) if len(status) else float("nan")
+            if off >= 80:
+                deut = "überwiegend bei stehender Pumpe, was sich durch Auskühlen bzw. Nachwärme der Leitung erklären lässt"
+            elif off <= 20:
+                deut = ("überwiegend bei laufender Pumpe; ein wärmerer Rücklauf als Vorlauf ist im durchströmten Betrieb "
+                        "physikalisch nicht möglich und deutet auf eine Abweichung zwischen den beiden Temperatursensoren "
+                        "hin, deren Kalibrierung zu prüfen ist")
+            else:
+                deut = "sowohl bei stehender als auch bei laufender Pumpe; die Zeitpunkte sind mit dem Pumpenstatus abzugleichen"
+            neg_txt.append(f"{label}: {len(neg)} Zeitschritte ({len(neg) / len(dt) * 100:.1f} %) mit negativer Spreizung bis "
+                           f"{neg.min():.1f} K, davon {100 - off:.0f} % bei laufender Pumpe – {deut}")
+
+    out = []
+    if ranges:
+        out.append("Im regulären Heizbetrieb (Oktober–April, aktiver Betrieb) liegt die Spreizung bei " + "; ".join(ranges) + ".")
+    out += zero_txt
+    if neg_txt:
+        out.append("Auffällig sind zudem negative Spreizungen: " + "; ".join(neg_txt) + ".")
+    return " ".join(out)
+
+
+def _pumpen_schluss(df: pd.DataFrame, pairs: list[tuple[str, str, str, str]], th: Thresholds) -> str:
+    """Deutung der Zeitschritte mit geringer Spreizung anhand des Pumpenstatus: laeuft die Pumpe in mehr als der
+    Haelfte davon, sprechen sie fuer ungeregelt weiterlaufende Pumpen; sonst eher fuer auskuehlende Leitungen."""
+    laufen, stehen = [], []
+    for label, vl_col, rl_col, pump_col in pairs:
+        vl = df[vl_col].replace(0, np.nan)
+        low = (vl > th.aktiv_schwelle_vl) & ((vl - df[rl_col].replace(0, np.nan)) < th.delta_t_min)
+        status = df.loc[low, pump_col].dropna()
+        if not len(status):
+            continue
+        on = float(status.mean() * 100)
+        (laufen if on >= 50 else stehen).append((label, on))
+    out = []
+    if laufen:
+        out.append("Bei " + " und ".join(f"{l} läuft die Pumpe in {o:.0f} %" for l, o in laufen) + " dieser Zeitschritte weiter. "
+                   "Wiederkehrende Phasen mit sehr geringer Spreizung bei laufender Pumpe sprechen für ungeregelt weiterlaufende "
+                   "Umwälzpumpen ohne Differenzdruckregelung und damit für vermeidbaren Pumpenstromverbrauch bei gleichzeitig "
+                   "ineffizienter Wärmeübergabe.")
+    if stehen:
+        out.append("Bei " + " und ".join(f"{l} steht die Pumpe dagegen in {100 - o:.0f} %" for l, o in stehen) + " dieser "
+                   "Zeitschritte still; dort spiegelt die geringe Spreizung eher abkühlende Leitungen als einen Pumpenbetrieb "
+                   "ohne Wärmeabnahme wider.")
+    return " ".join(out) or ("Wiederkehrende Phasen mit sehr geringer Spreizung sprechen für ungeregelt weiterlaufende "
+                             "Umwälzpumpen ohne Differenzdruckregelung und damit für vermeidbaren Pumpenstromverbrauch bei "
+                             "gleichzeitig ineffizienter Wärmeübergabe.")
+
+
+def _delta_t_text(df: pd.DataFrame, pairs: list[tuple[str, str, str, str]], th: Thresholds) -> NarrativeBlock:
     parts = []
-    for label, vl_col, rl_col in pairs:
+    for label, vl_col, rl_col, _pump in pairs:
         dt = df[vl_col] - df[rl_col]
         active = df[vl_col] > th.aktiv_schwelle_vl
         frac_low = (dt[active] < th.delta_t_min).mean() if active.any() else float("nan")
@@ -120,10 +207,11 @@ def _delta_t_text(df: pd.DataFrame, pairs: list[tuple[str, str, str]], th: Thres
     text = (
         "Bei effizientem Betrieb sollte die Temperaturspreizung zwischen Vor- und Rücklauf während "
         f"aktiver Heizphasen deutlich über {th.delta_t_min:.0f} Kelvin liegen. In den vorliegenden Daten liegt sie bei "
-        f"{' bzw. '.join(parts)} unterhalb dieses Werts. Wiederkehrende Phasen mit sehr geringer "
-        "Spreizung sprechen für ungeregelt weiterlaufende Umwälzpumpen ohne Differenzdruckregelung "
-        "und damit für vermeidbaren Pumpenstromverbrauch bei gleichzeitig ineffizienter Wärmeübergabe."
+        f"{' bzw. '.join(parts)} unterhalb dieses Werts. " + _pumpen_schluss(df, pairs, th)
     )
+    details = _delta_t_details(df, pairs, th)
+    if details:
+        text += " " + details
     return NarrativeBlock(["delta_t"], "Geringe Temperaturspreizung deutet auf ungeregelte Pumpen hin", text)
 
 
@@ -393,8 +481,8 @@ def build_narrative(df: pd.DataFrame, th: Thresholds | None = None) -> list[Narr
             ("FBH Geb.06", "FBH Geb.06 VL (Ist)"),
         ], "Stat. Heizung Geb.06 VL (Ist)", "statischen Heizung Geb.06", th),
         _delta_t_text(df, [
-            ("Stat. Heizung Geb.06", "Stat. Heizung Geb.06 VL (Ist)", "Stat. Heizung Geb.06 RL"),
-            ("FBH Geb.06", "FBH Geb.06 VL (Ist)", "FBH Geb.06 RL"),
+            ("Stat. Heizung Geb.06", "Stat. Heizung Geb.06 VL (Ist)", "Stat. Heizung Geb.06 RL", "Stat. Heizung Geb.06 Pumpe"),
+            ("FBH Geb.06", "FBH Geb.06 VL (Ist)", "FBH Geb.06 RL", "FBH Geb.06 Pumpe"),
         ], th),
         _sommerbetrieb_text(df, "Zähler 019 – WMZ"),
         _pumpen_text(df, [("Stat. Heizung Geb.06", "Stat. Heizung Geb.06 Pumpe"), ("FBH Geb.06", "FBH Geb.06 Pumpe")],

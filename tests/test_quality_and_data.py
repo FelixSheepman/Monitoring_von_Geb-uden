@@ -84,6 +84,19 @@ def test_regelguete_narrative_is_derived_from_the_data(report):
 
 
 @needs_data
+def test_delta_t_narrative_uses_pump_status_to_interpret_low_and_negative_spread(report):
+    """Spreizungs-Text: Bereich im Heizbetrieb, Pumpenstatus bei geringer Spreizung (FBH laeuft meist weiter,
+    statische Heizung steht meist still) und negative Spreizung (stat.: Pumpe aus, FBH: Pumpe an -> Sensorik)."""
+    text = next(b.text for b in report.narrative if b.figure_keys == ["delta_t"])
+    assert "über 2 Kelvin" in text and "Median 6.5 K" in text
+    assert "Bei FBH Geb.06 läuft die Pumpe in 71 % dieser Zeitschritte weiter" in text
+    assert "Bei Stat. Heizung Geb.06 steht die Pumpe dagegen in 77 % dieser Zeitschritte still" in text
+    assert "Juni bis September 2025 unter 1 K" in text
+    assert "bis -4.1 K, davon 100 % bei laufender Pumpe" in text and "Kalibrierung" in text
+    assert "Auskühlen" in text and "  " not in text
+
+
+@needs_data
 def test_heizkurve_caption_explains_the_chart_with_values_from_the_data(report):
     """Bildunterschrift der Heizkurve erklaert Achsen, Regressionslinie und Kennwerte; Steigung, Achsenabschnitt
     und Punktzahl entsprechen der Rechnung im Auswertungstext (gleiche Regression)."""
