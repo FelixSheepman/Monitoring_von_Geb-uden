@@ -133,28 +133,68 @@ HEIZPERIODE_MONATE = (10, 11, 12, 1, 2, 3, 4)   # 1.10. bis 30.4., wie bei der D
 SOMMER_MONATE = (6, 7, 8)
 
 
-def _aussetzer_zeitpunkte(df: pd.DataFrame, cols: list[str]) -> tuple[int, list[str]]:
-    """Ereignisse mit Messwert exakt 0 (Zeitschritte im Abstand bis 1 h = ein Ereignis): Anzahl der Ereignisse
-    und deren Monate als 'Monat Jahr' (ohne Wiederholung, chronologisch)."""
+def _datum(t: pd.Timestamp) -> str:
+    return f"{t:%d.%m.%Y}"
+
+
+def _aussetzer_zeitpunkte(df: pd.DataFrame, cols: list[str]) -> list[pd.Timestamp]:
+    """Beginn jedes Ereignisses mit Messwert exakt 0 (Zeitschritte im Abstand bis 1 h = ein Ereignis)."""
     events: list[pd.Timestamp] = []
     last = None
     for t in df.index[(df[cols] == 0).any(axis=1)]:
         if last is None or (t - last) > pd.Timedelta(hours=1):
             events.append(t)
         last = t
-    labels: list[str] = []
-    for t in events:
-        label = f"{_MONATE[t.month - 1]} {t.year}"
-        if label not in labels:
-            labels.append(label)
-    return len(events), labels
+    return events
+
+
+def _monat(t: pd.Timestamp) -> str:
+    return f"{_MONATE[t.month - 1]} {t.year}"
+
+
+def _sollwert_verlauf(soll: pd.Series) -> tuple[str, bool]:
+    """Beschreibt den Verlauf des Sollwerts als Abschnitte gleichen (gerundeten) Monatsmedians, z.B.
+    '20 °C (November 2024 bis September 2025), 22 °C (Oktober 2025)'. Zweiter Wert: Sollwert nahezu konstant
+    (Monatsmediane umfassen hoechstens 3 K), also keine witterungsgefuehrte Nachfuehrung."""
+    monthly = soll.resample("MS").median().dropna()
+    if monthly.empty:
+        return "", False
+    level = monthly.round(0).astype(int)
+    segments: list[list] = []
+    for ts, val in level.items():
+        if segments and segments[-1][0] == val:
+            segments[-1][2] = ts
+        else:
+            segments.append([val, ts, ts])
+    parts = [f"{val} °C ({_monat(a)}" + (f" bis {_monat(b)})" if b != a else ")") for val, a, b in segments]
+    return ", ".join(parts), float(monthly.max() - monthly.min()) <= 3
+
+
+def _heizperiode_jahr(idx: pd.DatetimeIndex) -> np.ndarray:
+    """Startjahr der Heizperiode (Oktober bis April) zu jedem Zeitpunkt, z.B. 2025 fuer Januar 2026."""
+    return np.where(idx.month >= 10, idx.year, idx.year - 1)
+
+
+def _heizperioden(ist: pd.Series) -> list[tuple[str, float, float, float, float]]:
+    """Je Heizperiode (Oktober bis April, mit mindestens 60 Tagen Daten): Bezeichnung '2024/25', Median,
+    5.- und 95.-Perzentil sowie Standardabweichung des Ist-Vorlaufs."""
+    heiz = ist[ist.index.month.isin(HEIZPERIODE_MONATE)].dropna()
+    season = _heizperiode_jahr(heiz.index)
+    out = []
+    for year in sorted(set(season)):
+        s = heiz[season == year]
+        if len(s) >= 96 * 60:
+            out.append((f"{year}/{str(year + 1)[-2:]}", float(s.median()), float(s.quantile(0.05)),
+                        float(s.quantile(0.95)), float(s.std())))
+    return out
 
 
 def _regelguete_text(df: pd.DataFrame, label: str, ist_col: str, soll_col: str, limit: float, limit_label: str,
-                     figure_key: str, heizkurve_bezug: bool = False) -> NarrativeBlock:
-    """Regelguete (Soll- vs. Ist-Vorlauf) getrennt nach Heizperiode und Sommer: folgt der Ist dem Soll, wird die
-    zulaessige Vorlauftemperatur eingehalten, liegt im Sommer eine dauerhafte Regelabweichung vor, und gibt es
-    Aussetzer (Messwert 0)? Alle Zahlen und Zeitpunkte stammen live aus den Daten."""
+                     figure_key: str, heizkurve_bezug: bool = False, niedertemperatur: bool = False) -> NarrativeBlock:
+    """Regelguete (Soll- vs. Ist-Vorlauf): folgt der Ist dem Soll, wie verlaeuft der Sollwert, wird die zulaessige
+    Vorlauftemperatur eingehalten (sonst wann und wie hoch), veraendert sich das Betriebsverhalten ueber die
+    Heizperioden, liegt im Sommer eine dauerhafte Regelabweichung vor, und gibt es Aussetzer (Messwert 0)?
+    Alle Zahlen und Zeitpunkte stammen live aus den Daten."""
     d = df[[ist_col, soll_col]].replace(0, np.nan)
     heiz = d[d.index.month.isin(HEIZPERIODE_MONATE)].dropna()
     sommer = d[d.index.month.isin(SOMMER_MONATE)].dropna()
@@ -169,22 +209,63 @@ def _regelguete_text(df: pd.DataFrame, label: str, ist_col: str, soll_col: str, 
             f"Während der Heizperiode (Oktober–April) folgt die Ist-Vorlauftemperatur der Soll-Vorgabe weitgehend "
             f"(mittlere Abweichung {abw:.1f} K) und bewegt sich überwiegend zwischen {h_lo:.0f} °C und {h_hi:.0f} °C.")
     else:
-        s_lo, s_hi = heiz[soll_col].quantile([0.05, 0.95])
+        verlauf, konstant = _sollwert_verlauf(d[soll_col])
+        if konstant:
+            parts.append(
+                f"Bereits der Verlauf der Soll-Vorgabe ist auffällig: Sie verharrt über den gesamten Erfassungszeitraum "
+                f"nahezu unverändert und liegt bei {verlauf}. Eine witterungsgeführte Nachführung ist nicht erkennbar; der "
+                "hinterlegte Wert wirkt damit nicht als gleitende Führungsgröße, sondern als fester Grundwert.")
+        dev = (heiz[ist_col] - heiz[soll_col])
+        d_lo, d_hi = dev.quantile([0.05, 0.95])
         parts.append(
-            f"Während der Heizperiode (Oktober–April) folgt die Ist-Vorlauftemperatur der Soll-Vorgabe nicht erkennbar: "
-            f"Der Sollwert liegt überwiegend zwischen {s_lo:.0f} °C und {s_hi:.0f} °C, die gemessene Ist-Vorlauftemperatur "
-            f"dagegen zwischen {h_lo:.0f} °C und {h_hi:.0f} °C (mittlere Abweichung {abw:.1f} K). Eine Regelgüte lässt sich "
-            "damit nicht beurteilen; zu klären ist, ob der hinterlegte Sollwert für diesen Kreis überhaupt maßgeblich ist.")
+            f"Die Ist-Vorlauftemperatur folgt dieser Vorgabe nicht erkennbar: Sie liegt in der Heizperiode im Mittel "
+            f"{dev.median():.1f} K oberhalb des Sollwerts ({d_lo:.0f} K bis {d_hi:.0f} K im 5.–95. Perzentil) und bewegt "
+            f"sich überwiegend zwischen {h_lo:.0f} °C und {h_hi:.0f} °C. Eine Regelabweichung dieser Größenordnung über "
+            "einen so langen Zeitraum lässt sich nicht mit der Trägheit des Systems erklären. Sie deutet darauf hin, dass "
+            "der Kreis dem vorgegebenen Sollwert nicht folgt, sondern von der übergeordneten Wärmeverteilung mitgeführt "
+            "oder manuell übersteuert wird (zu klären mit dem Betreiber; im Zusammenhang mit dem Zonenvergleich zu lesen). "
+            "Eine Regelgüte lässt sich damit nicht beurteilen.")
+
+    seasons = _heizperioden(d[ist_col])
+    if len(seasons) >= 2:
+        first, last = seasons[0], seasons[-1]
+        # Nur bei echter Veraenderung (Schwankungsbreite mindestens verdoppelt); ein anderes Temperaturniveau
+        # allein kann bei witterungsgefuehrten Kreisen einfach am Wetter liegen.
+        if last[4] >= 2 * first[4]:
+            monthly_std = d[ist_col].resample("MS").std()
+            cand = monthly_std[monthly_std.index.month.isin(HEIZPERIODE_MONATE)]
+            cand = cand[_heizperiode_jahr(cand.index) > int(first[0][:4])]
+            onset = next((ts for ts, s in cand.items() if s > 2 * first[4]), None)
+            parts.append(
+                f"Ab der Heizperiode {last[0]} ändert sich das Betriebsverhalten erkennbar: Der Ist-Vorlauf liegt in der "
+                f"Heizperiode {first[0]} im Median bei {first[1]:.0f} °C ({first[2]:.0f} °C bis {first[3]:.0f} °C), in der "
+                f"Heizperiode {last[0]} bei {last[1]:.0f} °C ({last[2]:.0f} °C bis {last[3]:.0f} °C). Die Schwankungsbreite steigt "
+                f"deutlich (Standardabweichung {first[4]:.1f} K gegenüber {last[4]:.1f} K)"
+                + (f", erkennbar ab {_monat(onset)}." if onset is not None else ".")
+                + " Da die Änderung zeitlich klar abgrenzbar ist, liegt die Vermutung nahe, dass in diesem Zeitraum ein "
+                  "Eingriff in die Regelung oder in die Hydraulik erfolgt ist (mit dem Betreiber zu klären).")
+
     ist_max = float(d[ist_col].max())
-    ueber = float((d[ist_col] > limit).mean() * 100)
-    if ist_max <= limit:
+    over = d[d[ist_col] > limit][ist_col]
+    if over.empty:
         parts.append(f"Die zulässige Vorlauftemperatur ({limit_label}) von {limit:.0f} °C wird dabei zu keinem Zeitpunkt "
                      f"überschritten (Maximum {ist_max:.1f} °C), sodass aus thermischer Sicht kein unzulässiger "
                      "Betriebszustand vorliegt.")
     else:
-        parts.append(f"Die zulässige Vorlauftemperatur ({limit_label}) von {limit:.0f} °C wird überschritten "
-                     f"(Maximum {ist_max:.1f} °C, in {ueber:.1f} % der Zeitschritte). Dies ist ein Hinweis auf eine zu hoch "
-                     "eingestellte Regelung oder eine falsch hinterlegte Grenze und mit dem Betreiber zu klären.")
+        hours = len(over) * 0.25
+        peaks = over.resample("MS").max().dropna()
+        peak_txt = "; ".join(f"{_monat(ts)}: bis {v:.1f} °C" for ts, v in peaks.items())
+        text = (f"Die zulässige Vorlauftemperatur ({limit_label}) von {limit:.0f} °C wird zwischen dem {_datum(over.index.min())} "
+                f"und dem {_datum(over.index.max())} in {len(over)} Zeitschritten (rund {hours:.0f} Stunden) überschritten "
+                f"({peak_txt}; Maximum {ist_max:.1f} °C).")
+        if niedertemperatur:
+            text += (" Da es sich um ein Niedertemperatursystem handelt, ist dieser Zustand nicht nur energetisch nachteilig: "
+                     "Zu hohe Vorlauftemperaturen können Estrich und Bodenbelag belasten und zu unzulässig hohen "
+                     "Oberflächentemperaturen in den betroffenen Räumen führen. Ursache und Abhilfe sind mit dem Betreiber "
+                     "zu klären.")
+        else:
+            text += " Dies ist ein Hinweis auf eine zu hoch eingestellte Regelung oder eine falsch hinterlegte Grenze und mit dem Betreiber zu klären."
+        parts.append(text)
 
     heading = f"Regelgüte {label}: Ist-Vorlauf folgt dem Sollwert" if folgt else f"Regelgüte {label}: Ist-Vorlauf folgt dem Sollwert nicht"
     if len(sommer) > 96:
@@ -207,14 +288,15 @@ def _regelguete_text(df: pd.DataFrame, label: str, ist_col: str, soll_col: str, 
             parts.append(f"Auch in den Sommermonaten (Juni–August) bleibt die Ist-Vorlauftemperatur nahe am Sollwert "
                          f"(Soll rund {soll_s:.0f} °C, mittlere Abweichung {dev:+.1f} K).")
 
-    n_events, months = _aussetzer_zeitpunkte(df, [ist_col, soll_col])
-    if n_events:
-        wann = f"an {n_events} Zeitpunkten" if n_events > 1 else "an einem Zeitpunkt"
+    events = _aussetzer_zeitpunkte(df, [ist_col, soll_col])
+    if events:
+        wann = f"an {len(events)} Zeitpunkten" if len(events) > 1 else "an einem Zeitpunkt"
         parts.append(
-            f"Zusätzlich sind {wann} ({', '.join(months)}) Aussetzer mit einem Messwert von 0 °C zu erkennen. Ein Wert von 0 °C ist "
-            "im laufenden Anlagenbetrieb nicht plausibel und deutet auf einen kurzzeitigen Ausfall der Messwerterfassung "
-            "oder -übertragung hin. Die Aussagekraft des Datensatzes bleibt insgesamt erhalten; die betroffenen Werte "
-            "lassen sich im Tab Datenprüfung gezielt von der weiteren Auswertung ausschließen.")
+            f"Zusätzlich sind {wann} ({', '.join(_datum(t) for t in events)}) Aussetzer mit einem Messwert von 0 °C zu "
+            "erkennen. Ein Wert von 0 °C ist im laufenden Anlagenbetrieb nicht plausibel und deutet auf einen "
+            "kurzzeitigen Ausfall der Messwerterfassung oder -übertragung hin. Die Aussagekraft des Datensatzes bleibt "
+            "insgesamt erhalten; die betroffenen Werte lassen sich im Tab Datenprüfung gezielt von der weiteren Auswertung "
+            "ausschließen.")
     return NarrativeBlock([figure_key], heading, " ".join(parts))
 
 
@@ -303,7 +385,7 @@ def build_narrative(df: pd.DataFrame, th: Thresholds | None = None) -> list[Narr
                          th.heizkoerper_limit, "Heizkörper", "regelguete_stat_heizung", heizkurve_bezug=True),
         _heizkurve_text(df, "RLT KL01 Außenluft", "Stat. Heizung Geb.06 VL (Ist)", th),
         _regelguete_text(df, "FBH Geb.06", "FBH Geb.06 VL (Ist)", "FBH Geb.06 VL (Soll)",
-                         th.fbh_limit, "Fußbodenheizung", "regelguete_fbh"),
+                         th.fbh_limit, "Fußbodenheizung", "regelguete_fbh", niedertemperatur=True),
         _rlt_betrieb_text(df, "RLT primär VL", "Zähler 021 – Strom Abluft", "Zähler 022 – Strom Zuluft"),
         _zonenvergleich_text(df, [
             ("FBH Geb.08 KI-Räume", "FBH Geb.08 KI-Räume VL"),

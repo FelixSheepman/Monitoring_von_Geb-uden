@@ -72,9 +72,15 @@ def test_regelguete_narrative_is_derived_from_the_data(report):
     assert "folgt die Ist-Vorlauftemperatur der Soll-Vorgabe weitgehend" in stat.text
     assert "zu keinem Zeitpunkt überschritten" in stat.text and "70 °C" in stat.text
     assert "dauerhafte Regelabweichung" in stat.text and "rund 20 °C" in stat.text
-    assert "an 3 Zeitpunkten (November 2024, März 2025, September 2025)" in stat.text
+    assert "an 3 Zeitpunkten (18.11.2024, 01.03.2025, 08.09.2025)" in stat.text
+    assert "ändert sich das Betriebsverhalten" not in stat.text  # witterungsgefuehrt: kein Niveau-/Streuungssprung
     assert "nicht erkennbar" in fbh.text and fbh.heading.endswith("nicht")
-    assert "40 °C wird überschritten" in fbh.text and "Heizkurve" not in fbh.text
+    assert "Heizkurve" not in fbh.text
+    # FBH: nahezu konstanter Sollwert mit seinen Stufen, Veraenderung ab Dezember 2025, Ueberschreitung der 40-°C-Grenze
+    assert "20 °C (November 2024 bis September 2025)" in fbh.text and "21 °C (Dezember 2025 bis Juni 2026)" in fbh.text
+    assert "erkennbar ab Dezember 2025" in fbh.text
+    assert "wird zwischen dem 25.12.2025 und dem 15.02.2026" in fbh.text and "bis 43.5 °C" in fbh.text
+    assert "Estrich" in fbh.text and "Estrich" not in stat.text
 
 
 @needs_data
