@@ -15,7 +15,7 @@ import pandas as pd
 from . import anomalies as an
 from .assessment import build_assessment, data_coverage, measurement_head
 from . import figures as fx
-from .metrics import daily_consumption, duration_curve, duration_curve_percentiles
+from .metrics import daily_consumption, duration_curve, duration_curve_percentiles, linear_fit
 from .exclusion import ExclusionLog, apply_exclusions
 from .extras import availability_daily, pump_runtime_monthly, savings_potential
 from .narrative import NarrativeBlock, build_narrative
@@ -122,8 +122,7 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
             fx.fig_heating_curve(df, "RLT KL01 Außenluft", "Stat. Heizung Geb.06 VL (Ist)",
                                  "Heizkurve: Außentemp. vs. Vorlauftemp. Geb.06"),
             th.heizkoerper_limit, "Zulässige Vorlauftemp. (Heizkörper)"),
-        "Streudiagramm der Ist-Vorlauftemperatur in Abhängigkeit von der Außentemperatur mit Regressionslinie "
-        f"und der zulässigen Vorlauftemperatur dieser Komponente ({th.heizkoerper_limit:.0f} °C, Annahme).",
+        _heizkurve_caption(df, th),
     ))
 
     carpet_anchor = pd.Timestamp(year=carpet_year, month=carpet_month, day=carpet_day)
@@ -278,6 +277,27 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
                   head_table=head_table, coverage=coverage, assessment=assessment,
                   carpet_year=carpet_year, carpet_month=carpet_month, carpet_day=carpet_day,
                   carpet_granularity=carpet_granularity, raw_df=raw_df, exclusion_log=exclusion_log)
+
+
+def _heizkurve_caption(df: pd.DataFrame, th: Thresholds) -> str:
+    """Bildunterschrift der Heizkurve mit Erklaerung des Diagramms; die Kennwerte der Regressionslinie werden
+    mit derselben Rechnung wie im Diagramm aus den Daten bestimmt."""
+    slope, intercept, r2, n = linear_fit(df, "RLT KL01 Außenluft", "Stat. Heizung Geb.06 VL (Ist)")
+    n_txt = f"{n:,}".replace(",", ".")
+    return (
+        f"Streudiagramm der gemessenen Ist-Vorlauftemperatur (y-Achse) in Abhängigkeit von der Außentemperatur (x-Achse): "
+        f"{n_txt} unverbundene Messpunkte ohne Zeitbezug, sodass nur der Zusammenhang beider Größen sichtbar wird. "
+        "Die Regressionslinie ist die in Kapitel 5 beschriebene Trendlinie nach der Methode der kleinsten Quadrate; sie "
+        "verdichtet die Punktwolke auf einen mittleren Zusammenhang. Ihre Steigung von "
+        f"{slope:.2f} K je K Außentemperatur ist die tatsächlich gefahrene Steilheit der Heizkurve, der Wert von "
+        f"{intercept:.1f} °C bei 0 °C Außentemperatur kennzeichnet ihr Niveau (Bestimmtheitsmaß R² = {r2:.2f}). Beide "
+        "Kennwerte beschreiben das reale Betriebsverhalten, nicht die im Regler hinterlegte Sollkurve, und lassen sich "
+        "so der geplanten Heizkurve gegenüberstellen. Eine enge Streuung um die Gerade bedeutet, dass die "
+        "Außentemperatur die Vorlauftemperatur weitgehend bestimmt; breite Streuung zeigt weitere Einflüsse, und "
+        "Punkte, die über einen längeren Abschnitt einseitig der Geraden liegen, zeigen, dass der lineare Ansatz den "
+        f"Verlauf dort nicht abbildet. Die rote gestrichelte Linie ist die zulässige Vorlauftemperatur dieser "
+        f"Komponente ({th.heizkoerper_limit:.0f} °C, Annahme)."
+    )
 
 
 def _apply_anomalies(df: pd.DataFrame, figs: list[FigureEntry], th: Thresholds) -> dict[str, int]:

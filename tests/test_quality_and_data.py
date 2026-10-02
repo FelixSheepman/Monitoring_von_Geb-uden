@@ -1,5 +1,6 @@
 """Tests: Der Agent muss die Kennwerte der manuellen Tabelle 1 reproduzieren."""
 
+import re
 from pathlib import Path
 
 import numpy as np
@@ -74,6 +75,19 @@ def test_regelguete_narrative_is_derived_from_the_data(report):
     assert "an 3 Zeitpunkten (November 2024, März 2025, September 2025)" in stat.text
     assert "nicht erkennbar" in fbh.text and fbh.heading.endswith("nicht")
     assert "40 °C wird überschritten" in fbh.text and "Heizkurve" not in fbh.text
+
+
+@needs_data
+def test_heizkurve_caption_explains_the_chart_with_values_from_the_data(report):
+    """Bildunterschrift der Heizkurve erklaert Achsen, Regressionslinie und Kennwerte; Steigung, Achsenabschnitt
+    und Punktzahl entsprechen der Rechnung im Auswertungstext (gleiche Regression)."""
+    caption = next(f.caption for f in report.figures if f.key == "heizkurve")
+    block = next(b for b in report.narrative if b.figure_keys == ["heizkurve"])
+    slope = re.search(r"Steigung von (-?\d+\.\d+) K", block.text).group(1)
+    intercept = re.search(r"\((-?\d+\.\d+) °C bei 0 °C", block.text).group(1)
+    assert f"Steigung von {slope} K je K Außentemperatur" in caption
+    assert f"Wert von {intercept} °C bei 0 °C Außentemperatur" in caption
+    assert "kleinsten Quadrate" in caption and "nicht die im Regler hinterlegte Sollkurve" in caption
 
 
 @needs_data

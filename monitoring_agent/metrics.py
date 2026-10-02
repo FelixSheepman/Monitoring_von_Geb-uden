@@ -11,6 +11,18 @@ def delta_t(df: pd.DataFrame, vl_col: str, rl_col: str) -> pd.Series:
     return df[vl_col] - df[rl_col]
 
 
+def linear_fit(df: pd.DataFrame, x_col: str, y_col: str) -> tuple[float, float, float, int]:
+    """Lineare Regression nach kleinsten Quadraten (wie die Trendlinie der Heizkurve): Steigung, Achsenabschnitt
+    (Wert bei x = 0), Bestimmtheitsmass R2 und Anzahl der Messpunkte (nur Zeitschritte mit beiden Werten)."""
+    sub = df[[x_col, y_col]].dropna()
+    n = len(sub)
+    if n < 3:
+        return float("nan"), float("nan"), float("nan"), n
+    slope, intercept = np.polyfit(sub[x_col], sub[y_col], 1)
+    r = np.corrcoef(sub[x_col], sub[y_col])[0, 1]
+    return float(slope), float(intercept), float(r ** 2), n
+
+
 def daily_consumption(df: pd.DataFrame, meter_col: str) -> pd.Series:
     """Taeglicher Verbrauch aus einem kumulierten Zaehlerstand: letzter minus
     erster gueltiger Wert je Kalendertag."""
