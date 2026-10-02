@@ -117,6 +117,18 @@ def test_build_report_honours_a_different_granularity_and_anchor(df):
 
 
 @needs_data
+def test_few_figures_use_webgl_so_the_browser_context_limit_is_not_hit(df):
+    """Jedes Diagramm mit WebGL-Spur (Scattergl) belegt einen Browser-WebGL-Kontext; Browser erlauben nur
+    ca. 16 gleichzeitig, danach wird der aelteste verworfen (Abbildung 2 erschien leer). Auch mit
+    Anomalie-Markern muessen deutlich weniger Diagramme WebGL nutzen."""
+    rep = build_report(df, display_resample="h", show_anomalies=True)
+    gl = [f.key for f in rep.figures if any(t.type == "scattergl" for t in f.figure.data)]
+    assert len(gl) <= 3, gl  # Heizkurve und Delta-T-Marker (8.866 Punkte)
+    wmz = next(f for f in rep.figures if f.key == "wmz_kumuliert").figure
+    assert all(t.type != "scattergl" for t in wmz.data)  # wenige Marker -> SVG
+
+
+@needs_data
 def test_no_secondary_axis_introduced_by_the_new_figures(df):
     """GR3-Regel: keine ueberlagerte Sekundaerachse (zwei Einheiten auf einer Plotflaeche). Eigene,
     nicht ueberlagerte Achsen je Subplot-Zeile (z.B. der Tag/Nacht-Vergleich mit vier Panels) sind

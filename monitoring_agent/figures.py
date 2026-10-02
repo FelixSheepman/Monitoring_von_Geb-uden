@@ -113,7 +113,10 @@ def fig_day_night_regelguete(df: pd.DataFrame, soll_col: str, ist_col: str, pump
             x=sub.index, y=sub[soll_col], mode="lines", name=f"Soll-Vorlauf ({label})", opacity=0.7,
             line=dict(color=COLOR_SOLL, width=1, dash="dash"),
         ), row=temp_row, col=1)
-        fig.add_trace(go.Scattergl(
+        # SVG statt WebGL: bei Stundenwerten nur ~14.000 Punkte je Abbildung, und jedes WebGL-Diagramm
+        # belegt Browser-WebGL-Kontexte (Limit ca. 16, siehe add_anomaly_markers).
+        dots_cls = go.Scattergl if len(sub) > 20000 else go.Scatter  # nur bei Rohdaten (15 Min.) WebGL
+        fig.add_trace(dots_cls(
             x=sub.index, y=sub[ist_col], mode="markers", name=f"Ist-Vorlauf ({label})",
             marker=dict(color=trend_color, size=2.5, opacity=0.25),
         ), row=temp_row, col=1)
@@ -533,7 +536,11 @@ def add_anomaly_markers(fig: go.Figure, x, y, name: str, color: str = "#C00000")
     """Legt rote Rautenmarker auf die Anomalie-Zeitpunkte (leere Eingabe -> keine Aenderung)."""
     if len(x) == 0:
         return fig
-    fig.add_trace(go.Scattergl(
+    # WebGL nur bei sehr vielen Punkten: jedes Diagramm mit Scattergl belegt einen WebGL-Kontext, und Browser
+    # erlauben nur etwa 16 gleichzeitig - darueber wird der aelteste Kontext verworfen und das zuerst
+    # gezeichnete Diagramm (Abbildung 2) erscheint leer bzw. mit Fehler.
+    trace_cls = go.Scattergl if len(x) > 1000 else go.Scatter
+    fig.add_trace(trace_cls(
         x=x, y=y, mode="markers", name=name,
         marker=dict(color=color, size=7, symbol="diamond", line=dict(color="white", width=1)),
         hovertemplate=f"{name}<br>%{{x}}<br>%{{y:.1f}}<extra></extra>",
