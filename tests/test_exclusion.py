@@ -138,6 +138,22 @@ def test_excel_export_includes_savings_assessment_theory_and_comparison_sheets(d
 
 
 @needs_data
+def test_excel_export_chart_sheets_follow_report_figures(df, tmp_path):
+    """Excel-Blaetter Abb02..Abb18 entsprechen den Abbildungen des Berichts (gleiche Nummern); der
+    Zonenvergleich ist wie im Bericht nach Systemtyp getrennt."""
+    import openpyxl
+    from monitoring_agent.excel_export import export_workbook
+    rep = build_report(df)
+    xlsx = tmp_path / "charts.xlsx"
+    export_workbook(rep, str(xlsx))
+    sheets = openpyxl.load_workbook(xlsx, read_only=True).sheetnames
+    abb = [s for s in sheets if s.startswith("Abb")]
+    assert [s[:5] for s in abb] == [f"Abb{i:02d}" for i in range(2, 2 + len(rep.figures))]
+    assert "Abb10_Zonenvergleich_FBH" in sheets and "Abb11_Zonenvergleich_HK" in sheets
+    assert not any(s.endswith("Zonenvergleich") for s in sheets)
+
+
+@needs_data
 def test_excel_export_narrative_sheet_shows_figure_references(df, tmp_path):
     """Die Excel-Auswertung sollte wie Word/HTML jedem Textblock seine Abbildung zuordnen, statt die
     Bloecke unsortiert ohne Bezug aufzulisten."""

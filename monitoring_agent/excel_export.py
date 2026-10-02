@@ -22,7 +22,9 @@ from __future__ import annotations
 import pandas as pd
 import xlsxwriter
 
-from .metrics import daily_consumption
+from .extras import availability_daily, pump_runtime_monthly
+from .figures import TAG_END_H, TAG_START_H
+from .metrics import daily_consumption, duration_curve
 from .narrative import place_by_figure
 
 HEADER_FMT = dict(bold=True, bg_color="#1F3864", font_color="white", border=1)
@@ -184,6 +186,60 @@ def _write_carpet_sheet(wb: xlsxwriter.Workbook, sheet_name: str, title: str,
     ws.set_column(1, last_col, 6)
 
 
+def _write_day_night_chart(wb: xlsxwriter.Workbook, sheet_name: str, title: str, df: pd.DataFrame, ist_col: str) -> None:
+    """Vereinfachte Excel-Variante des Tag/Nacht-Vergleichs (Abbildung im Bericht: 4 Panels mit Pumpenstreifen):
+    Tagesmittel des Ist-Vorlaufs getrennt nach Tag- (06-18 Uhr) und Nachtbetrieb auf einer Achse - zwei nahezu
+    deckungsgleiche Linien zeigen eine fehlende Nachtabsenkung."""
+    day = (df.index.hour >= TAG_START_H) & (df.index.hour < TAG_END_H)
+    tag = df.loc[day, ist_col].resample("D").mean()
+    nacht = df.loc[~day, ist_col].resample("D").mean()
+    _write_timeseries_chart(wb, sheet_name, title, tag.index,
+                            {f"Tagbetrieb ({TAG_START_H:02d}-{TAG_END_H:02d} Uhr)": tag,
+                             f"Nachtbetrieb ({TAG_END_H:02d}-{TAG_START_H:02d} Uhr)": nacht},
+                            "Temperatur (°C)", x_title="Datum")
+
+
+def _write_availability_sheet(wb: xlsxwriter.Workbook, sheet_name: str, avail: pd.DataFrame) -> None:
+    """Datenverfuegbarkeit je Sensor und Tag als Tabelle mit Farbskala (Excel-Gegenstueck zur Heatmap)."""
+    ws = wb.add_worksheet(sheet_name[:31])
+    date_fmt = wb.add_format({"num_format": "yyyy-mm-dd"})
+    ws.write(0, 0, "Datum (fehlerhafte Zeitschritte je Tag, von 96)")
+    for c, name in enumerate(avail.columns, start=1):
+        ws.write(0, c, name)
+    for r, (ts, row) in enumerate(avail.iterrows(), start=1):
+        ws.write_datetime(r, 0, ts.to_pydatetime(), date_fmt)
+        for c, val in enumerate(row.values, start=1):
+            ws.write_number(r, c, float(val))
+    ws.conditional_format(1, 1, len(avail), len(avail.columns), {
+        "type": "2_color_scale", "min_type": "num", "min_value": 0, "min_color": "#FFFFFF",
+        "max_type": "num", "max_value": max(3, float(avail.values.max())), "max_color": "#D7191C",
+    })
+    ws.set_column(0, 0, 14)
+    ws.set_column(1, len(avail.columns), 12)
+    ws.freeze_panes(1, 1)
+
+
+def _write_duration_curve_chart(wb: xlsxwriter.Workbook, sheet_name: str, curve: pd.DataFrame) -> None:
+    """Geordnete Dauerlinie der thermischen Leistung als XY-Diagramm (auf hoechstens 2000 Punkte ausgeduennt)."""
+    ws = wb.add_worksheet(sheet_name[:31])
+    step = max(1, len(curve) // 2000)
+    sub = curve.iloc[::step]
+    ws.write(0, 0, "Betriebsstunden (absteigend sortiert)")
+    ws.write(0, 1, "Leistung (kW)")
+    for r, (h, p) in enumerate(zip(sub["Stunden"], sub["Leistung_kW"]), start=1):
+        ws.write_number(r, 0, float(h))
+        ws.write_number(r, 1, float(p))
+    chart = wb.add_chart({"type": "scatter", "subtype": "straight"})
+    chart.add_series({"name": "Leistung", "categories": [sheet_name[:31], 1, 0, len(sub), 0],
+                      "values": [sheet_name[:31], 1, 1, len(sub), 1], "line": {"width": 2}})
+    chart.set_title({"name": "Geordnete Dauerlinie der thermischen Leistung"})
+    chart.set_x_axis({"name": "Betriebsstunden (absteigend sortiert)"})
+    chart.set_y_axis({"name": "Thermische Leistung (kW)"})
+    chart.set_legend({"none": True})
+    chart.set_size({"width": 780, "height": 380})
+    ws.insert_chart(0, 3, chart)
+
+
 def _write_narrative_sheet(wb: xlsxwriter.Workbook, report) -> None:
     """Wie word_export.py/html_export.py: jeder Textblock steht unter der letzten Abbildung, auf die er
     sich bezieht (place_by_figure), statt in der urspruenglichen, unsortierten Reihenfolge - so zeigen
@@ -303,6 +359,7 @@ def export_workbook(report, path: str, comparison: pd.DataFrame | None = None,
 
         hourly = df.resample("h").mean()
 
+        # Blattnummern entsprechen den Abbildungsnummern des Berichts (report.figures, ab Abbildung 2).
         _write_timeseries_chart(wb, "Abb02_WMZ", "Zähler 019 – WMZ (kumuliert, Stundenmittel)",
                                  hourly.index, {"WMZ kumuliert": hourly["Zähler 019 – WMZ"]}, "kWh")
 
@@ -313,35 +370,48 @@ def export_workbook(report, path: str, comparison: pd.DataFrame | None = None,
                                      "Ist-Vorlauf": hourly["Stat. Heizung Geb.06 VL (Ist)"],
                                  }, "Temperatur (°C)")
 
-        _write_scatter_with_trend(wb, "Abb04_Heizkurve", "Heizkurve: Außentemp. vs. Vorlauftemp. Geb.06",
+        _write_day_night_chart(wb, "Abb04_TagNacht_Heizung", "Tag/Nacht-Vergleich Stat. Heizung Geb.06 (Tagesmittel Ist-Vorlauf)",
+                                df, "Stat. Heizung Geb.06 VL (Ist)")
+
+        _write_scatter_with_trend(wb, "Abb05_Heizkurve", "Heizkurve: Außentemp. vs. Vorlauftemp. Geb.06",
                                    df["RLT KL01 Außenluft"], df["Stat. Heizung Geb.06 VL (Ist)"],
                                    "Außentemperatur (°C)", "Vorlauftemperatur (°C)")
 
-        _write_carpet_sheet(wb, "Abb05_Carpet_RLT_VL", f"RLT primär VL-Temp. {report.carpet_month:02d}/{report.carpet_year}",
+        _write_carpet_sheet(wb, "Abb06_Carpet_RLT_VL", f"RLT primär VL-Temp. {report.carpet_month:02d}/{report.carpet_year}",
                              df, "RLT primär VL", report.carpet_year, report.carpet_month, 20, 65)
-        _write_carpet_sheet(wb, "Abb06_Carpet_RLT_RL", f"RLT primär RL-Temp. {report.carpet_month:02d}/{report.carpet_year}",
+        _write_carpet_sheet(wb, "Abb07_Carpet_RLT_RL", f"RLT primär RL-Temp. {report.carpet_month:02d}/{report.carpet_year}",
                              df, "RLT primär RL", report.carpet_year, report.carpet_month, 20, 65)
 
-        _write_timeseries_chart(wb, "Abb07_Regelguete_FBH", "Regelgüte FBH Geb.06: Soll- vs. Ist-Vorlauf",
+        _write_timeseries_chart(wb, "Abb08_Regelguete_FBH", "Regelgüte FBH Geb.06: Soll- vs. Ist-Vorlauf",
                                  hourly.index, {
                                      "Soll-Vorlauf": hourly["FBH Geb.06 VL (Soll)"],
                                      "Ist-Vorlauf": hourly["FBH Geb.06 VL (Ist)"],
                                  }, "Temperatur (°C)")
 
-        _write_timeseries_chart(wb, "Abb08_Zonenvergleich", "Hydraulischer Abgleich: Zonenvergleich Vorlauftemperaturen",
+        _write_day_night_chart(wb, "Abb09_TagNacht_FBH", "Tag/Nacht-Vergleich FBH Geb.06 (Tagesmittel Ist-Vorlauf)",
+                                df, "FBH Geb.06 VL (Ist)")
+
+        # Hydraulischer Abgleich nur innerhalb desselben Systemtyps (wie im Bericht): FBH und Heizkoerper
+        # sind auf unterschiedliche Vorlauftemperaturen ausgelegt und gehoeren nicht auf ein Diagramm.
+        _write_timeseries_chart(wb, "Abb10_Zonenvergleich_FBH", "Hydraulischer Abgleich: Zonenvergleich Fußbodenheizungen",
                                  hourly.index, {
-                                     "Stat. Heizung Geb.06": hourly["Stat. Heizung Geb.06 VL (Ist)"],
                                      "FBH Geb.06": hourly["FBH Geb.06 VL (Ist)"],
                                      "FBH Geb.08 KI-Räume": hourly["FBH Geb.08 KI-Räume VL"],
                                      "FBH Geb.08 Intensivpflege": hourly["FBH Geb.08 Intensivpflege VL"],
                                  }, "Temperatur (°C)")
+        _write_timeseries_chart(wb, "Abb11_Zonenvergleich_HK", "Hydraulischer Abgleich: Zonenvergleich Heizkörperkreise",
+                                 hourly.index, {
+                                     "Stat. Heizung Geb.06": hourly["Stat. Heizung Geb.06 VL (Ist)"],
+                                     "Heizung Geb.1/3": hourly["Heizung Geb.1/3 VL"],
+                                     "Heizung Lager Geb.2": hourly["Heizung Lager Geb.2 VL"],
+                                 }, "Temperatur (°C)")
 
         dt_stat = hourly["Stat. Heizung Geb.06 VL (Ist)"] - hourly["Stat. Heizung Geb.06 RL"]
         dt_fbh = hourly["FBH Geb.06 VL (Ist)"] - hourly["FBH Geb.06 RL"]
-        _write_timeseries_chart(wb, "Abb09_DeltaT", "Effizienz: Temperaturspreizung (Delta T)",
+        _write_timeseries_chart(wb, "Abb12_DeltaT", "Effizienz: Temperaturspreizung (Delta T)",
                                  hourly.index, {"Stat. Heizung Geb.06": dt_stat, "FBH Geb.06": dt_fbh}, "Delta T (K)")
 
-        _write_timeseries_chart(wb, "Abb10_RLT_AUL_ZUL", "RLT-Anlage: Außenluft vs. Zuluft",
+        _write_timeseries_chart(wb, "Abb13_RLT_AUL_ZUL", "RLT-Anlage: Außenluft vs. Zuluft",
                                  hourly.index, {
                                      "Außenluft": hourly["RLT KL01 Außenluft"],
                                      "Zuluft": hourly["RLT KL01 Zuluft"],
@@ -349,14 +419,24 @@ def export_workbook(report, path: str, comparison: pd.DataFrame | None = None,
 
         daily_ab = daily_consumption(df, "Zähler 021 – Strom Abluft")
         daily_zu = daily_consumption(df, "Zähler 022 – Strom Zuluft")
-        _write_timeseries_chart(wb, "Abb11_Strom_RLT_taeglich", "Stromverbrauch RLT-Ventilatoren (Tageswerte)",
+        _write_timeseries_chart(wb, "Abb14_Strom_RLT_taeglich", "Stromverbrauch RLT-Ventilatoren (Tageswerte)",
                                  daily_ab.index, {"Abluftventilator": daily_ab, "Zuluftventilator": daily_zu},
                                  "Energie (kWh)", x_title="Datum")
 
         daily_waerme = daily_consumption(df, "Zähler 019 – WMZ")
-        _write_timeseries_chart(wb, "Abb12_Waerme_taeglich", "Täglicher Wärmeverbrauch",
+        _write_timeseries_chart(wb, "Abb15_Waerme_taeglich", "Täglicher Wärmeverbrauch",
                                  daily_waerme.index, {"Wärmeverbrauch": daily_waerme}, "kWh",
                                  chart_type="column", x_title="Datum")
+
+        pump_monthly = pump_runtime_monthly(df)
+        _write_timeseries_chart(wb, "Abb16_Pumpenlaufzeit", "Laufzeit der Heizkreispumpen (Monatswerte)",
+                                 pump_monthly.index, {c: pump_monthly[c] for c in pump_monthly.columns}, "Laufzeit (h/Monat)",
+                                 chart_type="column", x_title="Monat")
+
+        _write_availability_sheet(wb, "Abb17_Verfuegbarkeit", availability_daily(df))
+
+        curve = duration_curve(df, "Zähler 019 – WMZ")
+        _write_duration_curve_chart(wb, "Abb18_Dauerlinie", curve)
 
         # Kapitel 4-6 der Hausarbeit (Einsparpotenzial, Bewertung, Theorie-Praxis-Vergleich) sowie der
         # Vergleich mit der manuellen Auswertung (Kap. 8) - bisher nur in Word-/HTML-Export enthalten.
