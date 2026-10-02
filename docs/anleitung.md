@@ -245,7 +245,7 @@ Dieselbe Auflösung und dieselben Overlays gibt es auch im Tab **🏢 Gebäude**
 
 **HTML-Bericht zum Verschicken:** Im Tab **⬇️ Export** erzeugt **HTML-Bericht erzeugen** eine einzige Datei mit demselben Inhalt wie der Word-Bericht. Sie öffnet sich per Doppelklick in jedem Browser, ohne Python und ohne Internet, und die Diagramme bleiben interaktiv. Das ist der einfachste Weg, Ergebnisse an Betreuer zu schicken.
 
-**PDF-Bericht:** Im Tab **⬇️ Export** erzeugt **PDF-Bericht erzeugen** denselben Bericht als druckfertiges PDF (A4, Diagramme als Bilder, Tabellen mit Ampelfarben). Das Erzeugen dauert etwa eine Minute, weil alle Abbildungen gerendert werden. Dafür wird wie beim Word-Bericht ein Chrome/Chromium/Edge-Browser gebraucht; ist keiner vorhanden, weist die App darauf hin. Ersatzweise lässt sich der HTML-Bericht im Browser mit Strg+P als PDF speichern.
+**PDF-Bericht:** Im Tab **⬇️ Export** erzeugt **PDF-Bericht erzeugen** denselben Bericht als druckfertiges PDF (A4, Diagramme als Bilder, Tabellen mit Ampelfarben). Das Erzeugen dauert ein bis zwei Minuten, weil alle Abbildungen gerendert werden. Dafür wird wie beim Word-Bericht ein Chrome/Chromium/Edge-Browser gebraucht; ist keiner vorhanden, weist die App darauf hin. Ersatzweise lässt sich der HTML-Bericht im Browser mit Strg+P als PDF speichern.
 
 **Aufbau des Berichts** (in Anlehnung an Kapitel 6 der Hausarbeit): 1 Einleitung und Datengrundlage, 2 Datenprüfung (mit Messdatenkopf als Abbildung 1), 3 Grafische Aufbereitung und Auswertung (jeder Text steht direkt unter seiner Abbildung, Nummerierung wie in der Arbeit), 4 Energieeinsparpotenzial, 5 Bewertung der Ergebnisse, 6 Zusammenfassung und Empfehlungen (mit Theorie-Praxis-Abgleich), 7 Vergleich mit der manuellen Auswertung.
 

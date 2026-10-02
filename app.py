@@ -1,4 +1,4 @@
-"""
+﻿"""
 KI-Agent fuer die Monitoring-Auswertung - interaktive Web-App (Streamlit).
 
 Start:
@@ -637,7 +637,7 @@ with tabs["⬇️ Export"]:
         st.info("Für den PDF-Export wird Google Chrome, Chromium oder Edge benötigt, der hier nicht gefunden wurde. "
                 "Alternative: HTML-Bericht im Browser öffnen und mit Strg+P als PDF speichern.")
     elif st.button("PDF-Bericht erzeugen"):
-        with st.spinner("Rendere Abbildungen und erzeuge PDF (ca. 1 Minute)..."):
+        with st.spinner("Rendere Abbildungen und erzeuge PDF (ca. 1 bis 2 Minuten)..."):
             buf = io.BytesIO()
             cmp_pdf = compare_table1(report.quality_df) if settings.show_comparison else None
             try:
