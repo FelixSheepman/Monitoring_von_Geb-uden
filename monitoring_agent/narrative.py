@@ -61,6 +61,9 @@ def _heizkurve_text(df: pd.DataFrame, aul_col: str, vl_col: str, th: Thresholds)
         f"(Mittelwert {mean_vl_above:.1f} °C). Das deutet auf eine fehlende oder zu hoch angesetzte "
         f"Heizgrenztemperatur in der Regelung hin."
     )
+    details = _heizkurve_details(df, aul_col, vl_col)
+    if details:
+        text += " " + details
     return NarrativeBlock(["heizkurve"], "Heizkurve ohne erkennbare Heizgrenze", text)
 
 
@@ -83,6 +86,9 @@ def _rlt_betrieb_text(df: pd.DataFrame, vl_col: str, meter_ab: str, meter_zu: st
         f"{weekend_diff_pct:+.1f} % vom Werktagsmittel ({weekday_mean:.1f} kWh/Tag), was auf einen "
         f"durchgehenden Dauerbetrieb der RLT-Anlage auch außerhalb der Kernnutzungszeiten schließen lässt."
     )
+    details = _rlt_details(df, vl_col, meter_ab, meter_zu)
+    if details:
+        text += " " + details
     return NarrativeBlock(
         ["carpet_rlt_vl", "carpet_rlt_rl", "strom_rlt_taeglich"],
         "RLT-Anlage im Dauerbetrieb ohne erkennbare Nachtabsenkung", text,
@@ -92,11 +98,11 @@ def _rlt_betrieb_text(df: pd.DataFrame, vl_col: str, meter_ab: str, meter_zu: st
 def _zonenvergleich_text(df: pd.DataFrame, fbh_cols: list[tuple[str, str]],
                           ref_col: str, ref_label: str, th: Thresholds) -> NarrativeBlock:
     lines = []
-    worst_label, worst_p95 = None, -1
+    worst_label, worst_p95, worst_col = None, -1, None
     for label, col in fbh_cols:
         p95 = df[col].quantile(0.95)
         if p95 > worst_p95:
-            worst_p95, worst_label = p95, label
+            worst_p95, worst_label, worst_col = p95, label, col
     ref_p95 = df[ref_col].quantile(0.95)
 
     text = (
@@ -106,6 +112,9 @@ def _zonenvergleich_text(df: pd.DataFrame, fbh_cols: list[tuple[str, str]],
         f"Temperaturniveau der {ref_label} ({ref_p95:.1f} °C im 95. Perzentil). Dies deutet auf einen "
         f"fehlerhaften hydraulischen Abgleich oder eine übersteuerte Mischerregelung in dieser Zone hin."
     )
+    phasen = _zonen_phasen(df, worst_col, worst_label, [c for _, c in fbh_cols if c != worst_col], th)
+    if phasen:
+        text += " " + phasen
     return NarrativeBlock(["zonenvergleich"], "Hydraulischer Abgleich: Auffällig hohe FBH-Vorlauftemperatur", text)
 
 
@@ -401,6 +410,9 @@ def _sommerbetrieb_text(df: pd.DataFrame, meter_col: str) -> NarrativeBlock:
         "fällt jedoch nicht auf null, was auf fortlaufende Zirkulations- bzw. Leitungsverluste oder "
         "unnötigen Restbetrieb außerhalb der eigentlichen Heizperiode hindeutet."
     )
+    saison = _heizperioden_verbrauch(df, meter_col, "RLT KL01 Außenluft")
+    if saison:
+        text += " " + saison
     return NarrativeBlock(["waerme_taeglich"], "Restwärmeverbrauch außerhalb der Heizperiode", text)
 
 
@@ -462,7 +474,225 @@ def _dauerlinie_text(df: pd.DataFrame, meter_col: str) -> NarrativeBlock:
         f"ist in den Messdaten nicht enthalten – die markierten Punkte sind Vorschläge für mögliche "
         f"Auslegungsgrenzen und durch die Anlagendokumentation bzw. den Betreiber zu bestätigen."
     )
+    low_share = float((curve["Leistung_kW"] < 1).mean() * 100)
+    text += (f" Die Wärmeerzeugung arbeitet damit überwiegend im unteren Teillastbereich: In {low_share:.0f} % der Zeitschritte "
+             f"liegt die Leistung unter 1 kW, und nur in 20 % der Betriebszeit werden {p20:.0f} kW oder mehr abgerufen (Spitze "
+             f"{peak:.0f} kW). Läuft ein auf die Spitzenlast ausgelegter Erzeuger überwiegend in diesem Bereich, kann das zu "
+             "taktendem Betrieb und einem schlechten Wirkungsgrad führen (Auslegung und Taktverhalten sind in den Messdaten "
+             "nicht enthalten und mit dem Betreiber zu klären). Eine modulierende oder mehrstufige Erzeugung bzw. eine "
+             "Aufteilung in Grund- und Spitzenlast ist als Optimierungsmaßnahme zu prüfen.")
     return NarrativeBlock(["dauerlinie_leistung"], "Geordnete Dauerlinie: Auslegung eines Zusatzheizgeräts", text)
+
+
+TAG_STUNDEN = (6, 18)   # Tagbetrieb 06-18 Uhr (Annahme, wie im Tag/Nacht-Vergleich der Abbildungen)
+
+
+def _de0(x: float) -> str:
+    """Ganzzahl mit Punkt als Tausendertrennzeichen (deutsche Schreibweise)."""
+    return f"{x:,.0f}".replace(",", ".")
+
+
+def _heizkurve_details(df: pd.DataFrame, aul_col: str, vl_col: str) -> str:
+    """Zwei Betriebsbereiche der Heizkurve (Bereich mit Witterungsfuehrung, Plateau), Streubreite bei etwa 0 Grad
+    Aussentemperatur und Unterschied zwischen Tag/Nacht bzw. Werktag/Wochenende bei gleicher Aussentemperatur."""
+    sub = pd.DataFrame({"a": df[aul_col], "v": df[vl_col].replace(0, np.nan)}).dropna()
+    out: list[str] = []
+
+    plateau = sub[sub["a"] >= 25]
+    if len(plateau) >= 500:
+        level = float(plateau["v"].median())
+        bins = (np.floor(sub["a"] / 2) * 2)
+        stats = sub.groupby(bins)["v"].agg(["median", "size"])
+        stats = stats[stats["size"] >= 200]
+        knee = next((float(b) for b, r in stats.iterrows() if r["median"] <= level + 3), None)
+        if knee is not None and knee > sub["a"].min() + 4:
+            lo, hi = sub[sub["a"] < knee], sub[sub["a"] >= knee]
+            slope, icpt = np.polyfit(lo["a"], lo["v"], 1)
+            r2 = float(np.corrcoef(lo["a"], lo["v"])[0, 1] ** 2)
+            p5, p95 = hi["v"].quantile([0.05, 0.95])
+            out.append(
+                f"Die Heizkurve lässt zwei Betriebsbereiche erkennen. Bis etwa {knee:.0f} °C Außentemperatur sinkt die "
+                f"Vorlauftemperatur {'annähernd linear' if r2 >= 0.7 else 'mit großer Streuung'} um {abs(slope):.2f} K je K "
+                f"Außentemperatur (Regression in diesem Bereich: {slope * lo['a'].min() + icpt:.0f} °C bei "
+                f"{lo['a'].min():.0f} °C bis {slope * knee + icpt:.0f} °C bei {knee:.0f} °C); die witterungsgeführte "
+                f"Regelung arbeitet hier grundsätzlich. Oberhalb davon folgt die Vorlauftemperatur der Außentemperatur nicht "
+                f"mehr, sondern verharrt bis zu Außentemperaturen von {hi['a'].max():.0f} °C auf rund {p5:.0f} °C bis "
+                f"{p95:.0f} °C (Median {hi['v'].median():.0f} °C).")
+
+    near0 = sub[sub["a"].abs() < 2]
+    if len(near0) >= 200:
+        q5, q95 = near0["v"].quantile([0.05, 0.95])
+        text = (f"Bei einer Außentemperatur um 0 °C (±2 K) liegen die Vorlauftemperaturen zwischen {q5:.0f} °C und {q95:.0f} °C "
+                f"(Spanne {q95 - q5:.0f} K im 5.–95. Perzentil).")
+        h, wd = near0.index.hour, near0.index.dayofweek
+        tag = near0["v"][(h >= TAG_STUNDEN[0]) & (h < TAG_STUNDEN[1])].median()
+        nacht = near0["v"][(h < TAG_STUNDEN[0]) | (h >= TAG_STUNDEN[1])].median()
+        werktag, we = near0["v"][wd < 5].median(), near0["v"][wd >= 5].median()
+        d_tn, d_ww = abs(tag - nacht), abs(werktag - we)
+        if max(d_tn, d_ww) < 2:
+            text += (f" Zwischen Tag (06–18 Uhr) und Nacht (Median {tag:.1f} °C gegenüber {nacht:.1f} °C) sowie zwischen "
+                     f"Werktagen und Wochenende ({werktag:.1f} °C gegenüber {we:.1f} °C) besteht bei gleicher Außentemperatur "
+                     "kein erkennbarer Unterschied: Eine Absenkung für Nacht oder Wochenende ist in der Regelung nicht "
+                     "erkennbar; getrennte Heizkurven für Tag-, Nacht- und Wochenendbetrieb fehlen offenbar.")
+        else:
+            text += (f" Zwischen Tag und Nacht (Median {tag:.1f} °C gegenüber {nacht:.1f} °C) bzw. Werktagen und Wochenende "
+                     f"({werktag:.1f} °C gegenüber {we:.1f} °C) besteht bei gleicher Außentemperatur ein Unterschied; eine "
+                     "zeitabhängige Absenkung ist damit erkennbar.")
+        out.append(text)
+    return " ".join(out)
+
+
+def _run_ranges(flag: pd.Series, min_days: int) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
+    """Zusammenhaengende Tagesbereiche (index = Tage), in denen `flag` wahr ist, mit mindestens `min_days` Tagen."""
+    runs: list[tuple[pd.Timestamp, pd.Timestamp]] = []
+    start = prev = None
+    for day, val in flag.items():
+        if val:
+            if start is None or (day - prev) > pd.Timedelta(days=1):
+                if start is not None and (prev - start).days + 1 >= min_days:
+                    runs.append((start, prev))
+                start = day
+            prev = day
+        elif start is not None:
+            if (prev - start).days + 1 >= min_days:
+                runs.append((start, prev))
+            start = None
+    if start is not None and (prev - start).days + 1 >= min_days:
+        runs.append((start, prev))
+    return runs
+
+
+def _zonen_phasen(df: pd.DataFrame, zone_col: str, label: str, others: list[str], th: Thresholds) -> str:
+    """Hochlastphasen einer Zone (Tagesmittel ueber Auslegungsgrenze + 5 K an mindestens 7 Tagen in Folge) und ihr
+    Rueckfall auf das Niveau der uebrigen Kreise."""
+    thr = th.fbh_limit + 5
+    daily = df[zone_col].resample("D").mean()
+    phases = _run_ranges(daily > thr, 7)
+    if not phases:
+        return ""
+    s = df[zone_col]
+    over_share = float((s > thr).mean() * 100)
+    longest = max(phases, key=lambda r: r[1] - r[0])
+    in_phase = pd.Series(False, index=s.index)
+    for a, b in phases:
+        in_phase[a:b + pd.Timedelta(days=1)] = True
+    outside = float(s[~in_phase].median())
+    other_med = [float(df[c].median()) for c in others]
+    text = (f"Die Zone „{label}“ liegt in {over_share:.0f} % der Zeit über {thr:.0f} °C und erreicht bis zu {s.max():.1f} °C. "
+            f"Diese hohen Vorlauftemperaturen treten in {len(phases)} zusammenhängenden Phasen von mindestens sieben Tagen auf "
+            f"(längste: {(longest[1] - longest[0]).days + 1} Tage, {_datum(longest[0])} bis {_datum(longest[1])}). ")
+    if other_med and abs(outside - float(np.mean(other_med))) <= 5:
+        text += (f"Zwischen diesen Phasen fällt die Zone auf einen Median von {outside:.0f} °C zurück und liegt damit auf dem "
+                 f"Niveau der übrigen Kreise (Median {min(other_med):.0f} °C bis {max(other_med):.0f} °C). Ein solcher Wechsel "
+                 "zwischen zwei weit auseinanderliegenden Zuständen entspricht nicht dem Regelverhalten eines abgeglichenen "
+                 "Mischerkreises, sondern weist auf einen defekten oder in Offenstellung verharrenden Mischer in der "
+                 "Unterstation bzw. auf eine fehlerhafte Regelvorgabe in der Gebäudeleittechnik hin. Neben der Gefahr einer "
+                 "thermischen Überhitzung der betroffenen Räume entstehen dabei unkontrollierte Verteilverluste.")
+    else:
+        text += (f"Außerhalb dieser Phasen liegt der Median bei {outside:.0f} °C (übrige Kreise: {min(other_med):.0f} °C bis "
+                 f"{max(other_med):.0f} °C).")
+    return text
+
+
+def _rlt_details(df: pd.DataFrame, vl_col: str, meter_ab: str, meter_zu: str) -> str:
+    """Leistung und Jahresbedarf der RLT-Ventilatoren, Unterbrechungen im Heizbetrieb (zeigen, dass eine Abschaltung
+    technisch moeglich ist) und Niveauwechsel des Abluftventilators."""
+    ab, zu = daily_consumption(df, meter_ab).dropna(), daily_consumption(df, meter_zu).dropna()
+    out: list[str] = []
+    if len(ab) and len(zu):
+        annual = (ab.sum() / len(ab) + zu.sum() / len(zu)) * 365
+        out.append(
+            f"Zuluft- und Abluftventilator verbrauchen im Median {zu.median():.0f} bzw. {ab.median():.0f} kWh pro Tag "
+            f"({zu.quantile(0.05):.0f}–{zu.quantile(0.95):.0f} bzw. {ab.quantile(0.05):.0f}–{ab.quantile(0.95):.0f} kWh im "
+            f"5.–95. Perzentil), das entspricht einer nahezu durchgehenden Leistungsaufnahme von rund "
+            f"{zu.median() / 24:.1f} kW bzw. {ab.median() / 24:.1f} kW. Hochgerechnet ergibt sich ein Strombedarf der "
+            f"Ventilatoren von rund {_de0(annual)} kWh pro Jahr. Ein Dauerbetrieb über 24 Stunden ist für reguläre Stations-, "
+            "Verwaltungs- und Lagerbereiche energetisch nicht zu rechtfertigen und in der Praxis nur für hochsensible Bereiche "
+            "wie Operationssäle, Archive oder die Intensivpflege üblich.")
+
+    vl = df[vl_col]
+    dmin = vl.resample("D").min()
+    low = (dmin < 30) & dmin.index.month.isin((10, 11, 12, 1, 2, 3))
+    breaks = _run_ranges(low, 2)
+    if breaks:
+        parts = ", ".join(f"{_datum(a)} bis {_datum(b)}" for a, b in breaks[:4])
+        out.append(f"Im Heizbetrieb bricht die Vorlauftemperatur der RLT in einzelnen Phasen auf unter 30 °C ein ({parts}); "
+                   "das belegt, dass eine Abschaltung bzw. Absenkung technisch möglich ist.")
+
+    m = ab.resample("MS").agg(["median", "size"])
+    m = m[m["size"] >= 20]["median"]
+    jumps = [(ts, float(d)) for ts, d in m.diff().dropna().items() if abs(d) >= 8 and abs(d) / float(m.shift(1)[ts]) >= 0.15]
+    if jumps:
+        out.append("Sprunghafte Niveauwechsel des Abluftventilators (Monatsmedian) zeigen dasselbe für die Ventilatorleistung: "
+                   + "; ".join(f"{_monat(ts)} ({d:+.0f} kWh/Tag)" for ts, d in jumps) + ".")
+    return " ".join(out)
+
+
+def _rlt_luft_text(df: pd.DataFrame, aul_col: str, zul_col: str) -> NarrativeBlock:
+    """Aussenluft- vs. Zulufttemperatur: Erwaermung im Heizbetrieb, Verhalten im Sommer (keine Kuehlung) und
+    fehlende gesteuerte Nachtlueftung."""
+    aul, zul = df[aul_col], df[zul_col]
+    heiz = df.index.month.isin(HEIZPERIODE_MONATE)
+    sommer = df.index.month.isin(SOMMER_MONATE)
+    erw = (zul - aul)[heiz].dropna()
+    z_lo, z_med, z_hi = zul[heiz].dropna().quantile([0.05, 0.5, 0.95])
+    parts = [
+        f"Während der Heizperiode (Oktober–April) bleibt die Zulufttemperatur nahezu konstant bei rund {z_lo:.0f} °C bis "
+        f"{z_hi:.0f} °C (Median {z_med:.1f} °C), während die Außenlufttemperatur zwischen {aul.min():.0f} °C und "
+        f"{aul.max():.0f} °C schwankt. Die Außenluft wird dabei im Median um {erw.median():.0f} K, in 5 % der Zeit um mehr als "
+        f"{erw.quantile(0.95):.0f} K (Maximum {erw.max():.0f} K) erwärmt – rund um die Uhr."]
+
+    s = pd.DataFrame({"a": aul[sommer], "z": zul[sommer]}).dropna()
+    folgt = False
+    if len(s) > 500:
+        corr = float(s["a"].corr(s["z"]))
+        s_hi = s[s["a"] >= 25]
+        folgt = corr >= 0.7
+        txt = (f"In den Sommermonaten (Juni–August) löst sich die Zuluft vom Sollniveau und folgt der Außenluft "
+               f"(Korrelation {corr:.2f}); sie steigt bis auf {s['z'].quantile(0.95):.0f} °C (Maximum {s['z'].max():.0f} °C)")
+        if len(s_hi) > 100:
+            txt += (f". Bei Außentemperaturen ab 25 °C liegt sie im Mittel nur {float((s_hi['a'] - s_hi['z']).mean()):.1f} K "
+                    "unter der Außenluft, sodass keine wirksame Kühlung stattfindet")
+        parts.append(txt + ".")
+        h = s.index.hour
+        night = s[(h >= 22) | (h < 6)]
+        if len(night) > 200:
+            share = float((night["a"] < night["z"] - 3).mean() * 100)
+            parts.append(
+                f"Gleichzeitig bleibt die Zuluft in den Nachtstunden (22–06 Uhr, Annahme) im Median auf {night['z'].median():.1f} °C, "
+                f"obwohl die Außenluft im Median nur {night['a'].median():.1f} °C beträgt und in {share:.0f} % dieser Zeitschritte "
+                "um mehr als 3 K darunter liegt. Eine gesteuerte Nachtlüftung zur Auskühlung des Gebäudes in Hitzeperioden ist "
+                "nicht erkennbar. Üblich ist eine solche Auskühlung, wenn die Innenraumtemperatur nachts über 24 °C liegt, "
+                "der Dreitagesmittelwert der Außentemperatur 18 °C überschreitet oder es im Innenraum dauerhaft wärmer ist als "
+                "im Außenbereich (Richtwerte, nicht aus den Messdaten abgeleitet; Raumtemperaturen liegen nicht vor).")
+    heading = ("RLT-Zuluft folgt im Sommer der Außenluft: keine Kühlung, keine gesteuerte Nachtlüftung" if folgt
+               else "RLT-Anlage: Außenluft- und Zulufttemperatur im Vergleich")
+    return NarrativeBlock(["rlt_aul_zul"], heading, " ".join(parts))
+
+
+def _heizperioden_verbrauch(df: pd.DataFrame, meter_col: str, aul_col: str) -> str:
+    """Waermeverbrauch je Heizperiode (November bis April, jeweils mit mindestens 150 Tagen Daten) im Vergleich."""
+    daily = daily_consumption(df, meter_col).dropna()
+    aul = df[aul_col].resample("D").mean()
+    seasons = []
+    for year in sorted(set(daily.index.year)):
+        d = daily[((daily.index.year == year) & (daily.index.month >= 11)) | ((daily.index.year == year + 1) & (daily.index.month <= 4))]
+        if len(d) >= 150:
+            seasons.append((f"{year}/{str(year + 1)[-2:]}", float(d.sum()), float(d.mean()), float(d.quantile(0.1)),
+                            float(d.quantile(0.9)), float(d.max()), float(aul.reindex(d.index).mean())))
+    if len(seasons) < 2:
+        return ""
+    a, b = seasons[0], seasons[-1]
+    text = (f"Im saisonalen Vergleich (November–April) liegen die Tageswerte in der Heizperiode {a[0]} überwiegend zwischen "
+            f"{a[3]:.0f} und {a[4]:.0f} kWh (Summe {_de0(a[1])} kWh, Ø {a[2]:.0f} kWh/Tag bei Ø {a[6]:.1f} °C Außentemperatur), "
+            f"in der Heizperiode {b[0]} zwischen {b[3]:.0f} und {b[4]:.0f} kWh (Summe {_de0(b[1])} kWh, Ø {b[2]:.0f} kWh/Tag bei "
+            f"Ø {b[6]:.1f} °C, Maximum {b[5]:.0f} kWh).")
+    diff = (b[2] / a[2] - 1) * 100
+    if diff >= 3 and b[6] >= a[6]:
+        text += (f" Der Verbrauch je Tag liegt damit um {diff:.0f} % höher, obwohl die mittlere Außentemperatur um "
+                 f"{b[6] - a[6]:.1f} K höher lag; dieser Mehrverbrauch bei milderer Witterung ist auffällig und mit dem "
+                 "Betreiber zu klären (z. B. geänderte Betriebsweise einzelner Heizkreise).")
+    return text
 
 
 def build_narrative(df: pd.DataFrame, th: Thresholds | None = None) -> list[NarrativeBlock]:
@@ -475,6 +705,7 @@ def build_narrative(df: pd.DataFrame, th: Thresholds | None = None) -> list[Narr
         _regelguete_text(df, "FBH Geb.06", "FBH Geb.06 VL (Ist)", "FBH Geb.06 VL (Soll)",
                          th.fbh_limit, "Fußbodenheizung", "regelguete_fbh", niedertemperatur=True),
         _rlt_betrieb_text(df, "RLT primär VL", "Zähler 021 – Strom Abluft", "Zähler 022 – Strom Zuluft"),
+        _rlt_luft_text(df, "RLT KL01 Außenluft", "RLT KL01 Zuluft"),
         _zonenvergleich_text(df, [
             ("FBH Geb.08 KI-Räume", "FBH Geb.08 KI-Räume VL"),
             ("FBH Geb.08 Intensivpflege", "FBH Geb.08 Intensivpflege VL"),

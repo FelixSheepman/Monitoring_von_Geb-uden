@@ -84,6 +84,39 @@ def test_regelguete_narrative_is_derived_from_the_data(report):
 
 
 @needs_data
+def test_narrative_covers_heating_curve_zones_ventilation_air_heat_and_duration_curve(report):
+    """Ergaenzte Auswertungstexte: alle Zahlen stammen aus den Daten (hier die Werte des Beispieldatensatzes)."""
+    by_key = {}
+    for b in report.narrative:
+        for k in b.figure_keys:
+            by_key.setdefault(k, b)
+    hk = by_key["heizkurve"].text
+    assert "zwei Betriebsbereiche" in hk and "Bis etwa 18 °C Außentemperatur" in hk
+    assert "Spanne 7 K" in hk and "kein erkennbarer Unterschied" in hk and "Absenkung für Nacht oder Wochenende" in hk
+    zone = by_key["zonenvergleich"].text
+    assert "in 21 % der Zeit über 45 °C" in zone and "4 zusammenhängenden Phasen" in zone
+    assert "08.10.2025 bis 01.12.2025" in zone and "Offenstellung" in zone
+    rlt = by_key["strom_rlt_taeglich"].text
+    assert "1.9 kW bzw. 2.5 kW" in rlt and "37.327 kWh pro Jahr" in rlt and "21.02.2025 bis 25.02.2025" in rlt
+    assert "Februar 2026 (+14 kWh/Tag)" in rlt
+    luft = by_key["rlt_aul_zul"]
+    assert "folgt im Sommer der Außenluft" in luft.heading
+    assert "Korrelation 0.92" in luft.text and "in 58 % dieser Zeitschritte" in luft.text and "Raumtemperaturen liegen nicht vor" in luft.text
+    waerme = by_key["waerme_taeglich"].text
+    assert "Heizperiode 2024/25" in waerme and "Summe 41.859 kWh" in waerme and "um 17 % höher" in waerme
+    assert "In 40 % der Zeitschritte liegt die Leistung unter 1 kW" in by_key["dauerlinie_leistung"].text
+
+
+@needs_data
+def test_summary_names_the_assumptions_made_by_the_agent(report):
+    from monitoring_agent.assessment import assessment_texts
+    text = assessment_texts(report.assessment, report.savings, report.thresholds)["zusammenfassung"]
+    assert "vom KI-Agenten selbst getroffen" in text and "22:00 bis 06:00 Uhr" in text
+    assert "Schwellenwert von 2 K" in text and "Aus bis 15 %" in text
+    assert "vom KI-Agenten selbst getroffen" not in assessment_texts(report.assessment, report.savings)["zusammenfassung"]
+
+
+@needs_data
 def test_delta_t_narrative_uses_pump_status_to_interpret_low_and_negative_spread(report):
     """Spreizungs-Text: Bereich im Heizbetrieb, Pumpenstatus bei geringer Spreizung (FBH laeuft meist weiter,
     statische Heizung steht meist still) und negative Spreizung (stat.: Pumpe aus, FBH: Pumpe an -> Sensorik)."""

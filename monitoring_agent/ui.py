@@ -135,7 +135,7 @@ def render_assessment(report, include_savings: bool) -> None:
     if a is None or a.empty:
         st.info("Keine Bewertung verfügbar.")
         return
-    texts = assessment_texts(a, report.savings if include_savings else None)
+    texts = assessment_texts(a, report.savings if include_savings else None, report.thresholds)
     counts = a["Schweregrad"].value_counts()
     c1, c2, c3 = st.columns(3)
     c1.metric("Hoher Schweregrad", int(counts.get("hoch", 0)))
@@ -265,7 +265,8 @@ def render_research(ctx, crit: pd.DataFrame, report, th, include_savings: bool) 
 
     st.markdown("### Zusammenfassung, Empfehlungen und Ausblick (Kap. 10)")
     if report.assessment is not None and len(report.assessment):
-        st.write(assessment_texts(report.assessment, report.savings if include_savings else None)["zusammenfassung"])
+        st.write(assessment_texts(report.assessment, report.savings if include_savings else None,
+                                  report.thresholds)["zusammenfassung"])
     st.markdown("**Ausblick (Entwurf)**")
     for item in OUTLOOK:
         st.markdown(f"- {item}")

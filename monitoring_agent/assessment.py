@@ -195,7 +195,7 @@ def build_assessment(df: pd.DataFrame, quality_df: pd.DataFrame, savings: pd.Dat
     return out
 
 
-def assessment_texts(assess: pd.DataFrame, savings: pd.DataFrame | None) -> dict[str, str]:
+def assessment_texts(assess: pd.DataFrame, savings: pd.DataFrame | None, th: Thresholds | None = None) -> dict[str, str]:
     """Ausformulierte Texte fuer Kap. 6.5 (Bewertung) und Kap. 6.6 (Zusammenfassung und Empfehlungen)."""
     counts = assess["Schweregrad"].value_counts()
     n_hoch, n_mittel, n_gering = (int(counts.get(k, 0)) for k in ("hoch", "mittel", "gering"))
@@ -220,7 +220,27 @@ def assessment_texts(assess: pd.DataFrame, savings: pd.DataFrame | None) -> dict
     zusammenfassung = (f"Die Auswertung der Messdaten zeigt vor allem folgende Schwerpunkte: {top_txt}.{sv_txt} "
                        "Empfohlen wird, die Maßnahmen in der Reihenfolge des Schweregrads mit dem Betreiber abzustimmen "
                        "und die Wirkung anschließend durch erneutes Monitoring zu belegen.")
+    if th is not None:
+        zusammenfassung += " " + agent_assumptions_text(th)
     return {"bewertung": bewertung, "zusammenfassung": zusammenfassung}
+
+
+def agent_assumptions_text(th: Thresholds) -> str:
+    """Festlegungen, die der Agent selbst getroffen hat und die nicht aus einer Anlagendokumentation stammen
+    (mit den aktuell eingestellten Werten); sie sind bei der Bewertung gesondert zu betrachten."""
+    from .figures import NIGHT_END, NIGHT_START, OPERATING_BANDS, TAG_END_H, TAG_START_H
+    bands = ", ".join(f"{name} bis {frac * 100:.0f} %" for frac, name in OPERATING_BANDS[:-1])
+    return (
+        "Bei der Bewertung ist zu berücksichtigen, dass mehrere Festlegungen vom KI-Agenten selbst getroffen wurden und nicht "
+        "aus einer Anlagendokumentation stammen. Das betrifft die Betriebsbereiche im Carpetplot "
+        f"(Anteile der Farbskala: {bands}, darüber {OPERATING_BANDS[-1][1]}), den als Nachtzeit angenommenen Zeitraum von "
+        f"{NIGHT_START} bis {NIGHT_END} Uhr im Carpetplot und die Fenster {TAG_START_H:02d}–{TAG_END_H:02d} Uhr (Tag) bzw. "
+        f"{TAG_END_H:02d}–{TAG_START_H:02d} Uhr (Nacht) im Tag/Nacht-Vergleich, den Schwellenwert von {th.delta_t_min:g} K für "
+        f"unzureichende Temperaturspreizungen, die Schwelle von {th.aktiv_schwelle_vl:.0f} °C Vorlauftemperatur für aktiven "
+        f"Heizbetrieb, die Heizgrenze von {th.heizgrenze_aul:.0f} °C Außentemperatur, die zulässigen Vorlauftemperaturen "
+        f"({th.fbh_limit:.0f} °C Fußbodenheizung, {th.heizkoerper_limit:.0f} °C Heizkörper) sowie die Annahmen der "
+        "Einsparabschätzung. Diese Annahmen sind im Rahmen des Vergleichs der Zwischenschritte gesondert zu bewerten und mit "
+        "der Anlagendokumentation abzugleichen.")
 
 
 # ----------------------------------------------------------------------------- Theorie-Praxis

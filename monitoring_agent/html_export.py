@@ -202,7 +202,7 @@ def export_html(report, path, narrative=None, comparison=None, include_savings: 
     texts = None
     section(4)
     if include_assessment and report.assessment is not None and len(report.assessment):
-        texts = assessment_texts(report.assessment, report.savings if include_savings else None)
+        texts = assessment_texts(report.assessment, report.savings if include_savings else None, th)
         out.append(_paragraphs(texts["bewertung"]))
         out.append(_table(report.assessment[["Nr.", "Befund", "Schweregrad", "Kennzahl", "Empfehlung"]],
                           "Schweregrad", SEVERITY))

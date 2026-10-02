@@ -249,7 +249,7 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
     chapter(REPORT_SECTIONS[4])
     texts = None
     if include_assessment and report.assessment is not None and len(report.assessment):
-        texts = assessment_texts(report.assessment, report.savings if include_savings else None)
+        texts = assessment_texts(report.assessment, report.savings if include_savings else None, th)
         doc.add_paragraph(texts["bewertung"])
         table_caption("Bewertung und Priorisierung der Befunde")
         a = report.assessment[["Nr.", "Befund", "Schweregrad", "Kennzahl", "Empfehlung"]]
