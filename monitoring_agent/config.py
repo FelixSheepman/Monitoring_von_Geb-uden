@@ -19,6 +19,8 @@ Rollen (role):
 
 from dataclasses import dataclass, field
 
+import pandas as pd
+
 
 @dataclass(frozen=True)
 class Column:
@@ -79,6 +81,21 @@ CARPET_COLOR_RANGE = {
 BUILDING_HOSPITAL_ZONES = {
     "fbh_geb08_ki", "fbh_geb08_intensiv",
 }
+
+
+# Rollen, bei denen ein Messwert von exakt 0.0 physikalisch praktisch ausgeschlossen ist (ein aktiver
+# Vor-/Ruecklauf- oder Sollwert-Kreis wird nie auf exakt 0 Grad abkuehlen) und daher als Aussetzer der
+# Datenaufzeichnung gilt. Eine einzige Quelle fuer Datenpruefung (quality.py), Werteausschluss
+# (exclusion.py) und Verfuegbarkeitsgrafik (extras.py), damit sich die Regel nicht unbemerkt auseinanderentwickelt.
+TEMP_DROPOUT_ROLES = ("vl", "rl", "soll_vl")
+
+
+def zero_dropout_mask(series: pd.Series, role: str) -> pd.Series:
+    """True, wo der Wert exakt 0 ist und das fuer diese Rolle ein Aussetzer bedeutet (siehe
+    TEMP_DROPOUT_ROLES); sonst durchgehend False."""
+    if role not in TEMP_DROPOUT_ROLES:
+        return pd.Series(False, index=series.index)
+    return series == 0
 
 
 def by_zone_role(columns: list[Column] = COLUMNS) -> dict:

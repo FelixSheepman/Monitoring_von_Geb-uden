@@ -11,10 +11,10 @@ from datetime import date
 
 import pandas as pd
 
-from .structure import REPORT_SECTIONS
+from .structure import GREEN, RED, REPORT_SECTIONS, SEVERITY_COLORS
 
-SEVERITY = {"hoch": "#FFC7CE", "mittel": "#FFE699", "gering": "#C6EFCE"}
-STATUS = {"Auffällig!": "#FFC7CE", "Plausibel": "#C6EFCE", "ja": "#C6EFCE", "nein": "#FFC7CE"}
+SEVERITY = SEVERITY_COLORS
+STATUS = {"Auffällig!": RED, "Plausibel": GREEN, "ja": GREEN, "nein": RED}
 
 CSS = """
 :root{--bg:#ffffff;--fg:#1c2733;--muted:#5b6b7b;--line:#d5dce4;--navy:#1F3864;--soft:#f3f6fa}
@@ -31,7 +31,7 @@ h3{color:var(--navy);font-size:1.1rem;margin:1.6em 0 .4em}
 .kpi span{color:var(--muted);font-size:.85rem}
 .scroll{overflow-x:auto;margin:.6em 0 1em}
 table{border-collapse:collapse;width:100%;font-size:.85rem}
-th{background:var(--navy);color:#fff;text-align:left;padding:6px 8px;position:sticky;top:0}
+th{background:var(--navy);color:#fff;text-align:left;padding:6px 8px}
 td{border:1px solid var(--line);padding:5px 8px;vertical-align:top}
 figure{margin:1.6em 0 .4em}
 figcaption{font-size:.9rem;color:var(--muted);margin-top:.2em}
@@ -157,7 +157,8 @@ def export_html(report, path, narrative=None, comparison=None, include_savings: 
         out.append(f"<p>Auf Entscheidung der Bearbeiter wurden {n_values} fehlerhafte Messwerte in {log.n_columns} "
                    "Spalte(n) von der Auswertung ausgeschlossen. Sie sind in Abbildungen, Kennwerten, Bewertung und "
                    "Einsparabschätzung nicht berücksichtigt. Die Datenprüfung bezieht sich auf die Rohdaten.</p>")
-        out.append(_table(log.summary))
+        from .exclusion import SUMMARY_COLUMNS
+        out.append(_table(log.summary[SUMMARY_COLUMNS]))
 
     # 4 Energieeinsparpotenzial
     section(3)

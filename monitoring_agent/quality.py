@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from .config import COLUMNS, PLAUSIBLE_RANGE, by_zone_role
+from .config import COLUMNS, PLAUSIBLE_RANGE, by_zone_role, zero_dropout_mask
 
 
 @dataclass
@@ -71,10 +71,8 @@ def _check_zero_dropout(series: pd.Series, role: str) -> list[Finding]:
     ein Messwert von exakt 0.0 physikalisch praktisch ausgeschlossen - schon ein
     einzelnes Auftreten deutet auf einen Sensor-/Uebertragungsaussetzer hin
     (gleiche Heuristik wie in der manuellen Datenpruefung: "Min-Wert von 0")."""
-    if role not in ("vl", "rl", "soll_vl"):
-        return []
     valid = series.dropna()
-    n_zero = int((valid == 0).sum())
+    n_zero = int(zero_dropout_mask(valid, role).sum())
     if n_zero > 0:
         return [Finding(
             "auffaellig",

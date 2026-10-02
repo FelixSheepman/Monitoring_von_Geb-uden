@@ -25,6 +25,12 @@ def load_measurements(path: str | Path, sheet_name: str = "Tabelle1") -> pd.Data
     raw = raw.rename(columns={DATE_COLUMN: "Datum"})
     raw["Datum"] = pd.to_datetime(raw["Datum"], format="%Y.%m.%d %H:%M:%S", errors="coerce")
     raw = raw.dropna(subset=["Datum"]).set_index("Datum").sort_index()
+    if raw.index.duplicated().any():
+        # Bei der Zeitumstellung im Herbst (doppelte Stunde) koennen zwei Messzeilen denselben
+        # Zeitstempel erhalten (die Rohdaten sind naive Lokalzeit ohne UTC-Offset). Ohne das waeren
+        # resample()-basierte Tages-/Monatssummen an diesem Tag verfaelscht. Es bleibt die im
+        # Datensatz zuerst auftretende Zeile erhalten (Annahme: Dateireihenfolge = chronologisch).
+        raw = raw[~raw.index.duplicated(keep="first")]
 
     rename_map = {c.excel_name: c.short for c in COLUMNS}
     missing = [name for name in rename_map if name not in raw.columns]

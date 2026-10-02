@@ -9,7 +9,7 @@ import pytest
 
 from monitoring_agent.comparison import agreement_summary, compare_findings, compare_table1
 from monitoring_agent.config import COLUMNS
-from monitoring_agent.data_loader import infer_interval_minutes, load_measurements
+from monitoring_agent.data_loader import HEADER_ROW_EXCEL, infer_interval_minutes, load_measurements
 from monitoring_agent.quality import quality_to_dataframe, run_data_quality
 from monitoring_agent.report import build_report
 
@@ -32,6 +32,34 @@ def test_dataset_shape_matches_hausarbeit(df):
     assert df.shape == (58125, 23)
     assert df.index.min() == pd.Timestamp("2024-11-01 00:00:00")
     assert infer_interval_minutes(df) == 15
+
+
+def test_load_measurements_drops_duplicate_dst_timestamp(tmp_path):
+    """Bei der Zeitumstellung im Herbst (doppelte Stunde) koennen zwei Messzeilen denselben naiven
+    Zeitstempel erhalten; ohne Entduplizierung wuerden resample()-basierte Tages-/Monatssummen an
+    diesem Tag verfaelscht (Index-Duplikate werden bei resample stillschweigend zusammengefasst)."""
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Tabelle1"
+    headers = ["Datum"] + [c.excel_name for c in COLUMNS]
+    for _ in range(HEADER_ROW_EXCEL - 1):
+        ws.append([])
+    ws.append(headers)
+    rows = [
+        ("2025.10.26 02:00:00", 1),
+        ("2025.10.26 02:00:00", 2),  # Zeitumstellung: doppelte Stunde, gleicher Zeitstempel
+        ("2025.10.26 02:15:00", 3),
+    ]
+    for ts, val in rows:
+        ws.append([ts] + [val] * len(COLUMNS))
+    path = tmp_path / "synthetic.xlsx"
+    wb.save(path)
+
+    df = load_measurements(path)
+    assert not df.index.duplicated().any()
+    assert len(df) == 2
+    assert df.iloc[0][COLUMNS[0].short] == 1  # erste Zeile im Datensatz bleibt erhalten, nicht die zweite
 
 
 @needs_data

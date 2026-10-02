@@ -14,10 +14,9 @@ from .figures import carpet_period_label
 from .process import (OUTLOOK, STATUS_FAIL, STATUS_INFO, STATUS_NA, STATUS_OK, agent_profile,
                       agent_variants, chapter_map, chart_types, load_research_questions, overall_summary,
                       research_answers, step_report, step_summary, tool_comparison)
-from .structure import STEPS
+from .structure import AMBER, GREEN, INFO_BLUE, RED, SEVERITY_COLORS, STEPS
 
-SEVERITY_COLORS = {"hoch": "#FFC7CE", "mittel": "#FFE699", "gering": "#C6EFCE"}
-STATUS_COLORS = {STATUS_OK: "#C6EFCE", STATUS_FAIL: "#FFC7CE", STATUS_NA: "#FFE699", STATUS_INFO: "#DDEBF7"}
+STATUS_COLORS = {STATUS_OK: GREEN, STATUS_FAIL: RED, STATUS_NA: AMBER, STATUS_INFO: INFO_BLUE}
 
 
 def _colored(df: pd.DataFrame, column: str, colors: dict[str, str]):
@@ -26,10 +25,10 @@ def _colored(df: pd.DataFrame, column: str, colors: dict[str, str]):
 
 def _result_color(value: str) -> str:
     if value.startswith("bestätigt"):
-        return "#C6EFCE"
+        return GREEN
     if value.startswith(("teilweise", "nicht durchgängig")):
-        return "#FFE699"
-    return "#FFC7CE"
+        return AMBER
+    return RED
 
 
 # ----------------------------------------------------------------------------- Datenpruefung (Ergaenzungen)
@@ -41,7 +40,7 @@ def render_data_extras(report) -> None:
             st.caption("Die ersten Zeitschritte der Messdaten mit allen Messspalten.")
     if report.coverage is not None and len(report.coverage):
         with st.expander("Datenabdeckung der Heiz- und Sommerperioden (Anforderung Kap. 4)", expanded=True):
-            st.dataframe(_colored(report.coverage, "Erfüllt", {"ja": "#C6EFCE", "nein": "#FFC7CE"}),
+            st.dataframe(_colored(report.coverage, "Erfüllt", {"ja": GREEN, "nein": RED}),
                          width="stretch", hide_index=True)
             st.caption("Heizperiode: 1.10. bis 30.4., Sommerperiode: 1.6. bis 31.8. Erfüllt heißt: mindestens 80 % der Tage "
                        "haben Messdaten.")
@@ -105,7 +104,7 @@ def render_heizkreise(report, carpet_granularity: str, carpet_anchor, th=None) -
     qdf = circuit_quality(report.quality_df, kreis)
     if len(qdf):
         st.markdown("**Datenprüfung dieses Heizkreises**")
-        st.dataframe(_colored(qdf, "Plausibilität", {"Plausibel": "#C6EFCE", "Auffällig!": "#FFC7CE"}),
+        st.dataframe(_colored(qdf, "Plausibilität", {"Plausibel": GREEN, "Auffällig!": RED}),
                      width="stretch", hide_index=True)
 
     _label = carpet_period_label(carpet_granularity, pd.Timestamp(carpet_anchor))

@@ -61,3 +61,8 @@ def test_package_layout_is_complete():
     assert make_package.DATA.exists()
     names = {p.name for p in (ROOT / "reference").iterdir()}
     assert {"kontrollkriterien.csv", "manual_tabelle1.csv", "forschungsfragen.csv"} <= names
+
+    # Jedes neue Root-Skript muss in FILES ergaenzt werden, sonst fehlt es im Versandpaket - make_package.py
+    # selbst ist die einzige bewusste Ausnahme (reines Build-Skript, wird zur Laufzeit nicht gebraucht).
+    root_scripts = {p.name for p in ROOT.glob("*.py")} - {"make_package.py"}
+    assert root_scripts <= set(make_package.FILES)

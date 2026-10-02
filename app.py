@@ -34,7 +34,7 @@ from monitoring_agent.quality import quality_to_dataframe, run_data_quality
 from monitoring_agent.report import build_report
 from monitoring_agent.settings import FEATURE_LABELS, Settings, Thresholds
 from monitoring_agent.process import Ctx, evaluate_criteria, optimization_hints
-from monitoring_agent.structure import STEPS
+from monitoring_agent.structure import AMBER, GREEN, RED, STEPS
 from monitoring_agent.ui import (render_assessment, render_chapter8, render_data_extras, render_heizkreise,
                                  render_process, render_research)
 from monitoring_agent.word_export import export_chapter8_docx, export_docx
@@ -139,20 +139,36 @@ with st.sidebar:
     with st.expander("🎚️ Schwellenwerte & Annahmen", expanded=False):
         th_defaults = Thresholds()
         thresholds = Thresholds(
-            heizgrenze_aul=st.slider("Heizgrenze Außentemperatur (°C)", 5.0, 20.0, th_defaults.heizgrenze_aul, 0.5),
-            aktiv_schwelle_vl=st.slider("Aktiver Heizbetrieb ab Vorlauf (°C)", 15.0, 40.0, th_defaults.aktiv_schwelle_vl, 1.0),
-            delta_t_min=st.slider("Mindest-Spreizung Delta T (K)", 1.0, 10.0, th_defaults.delta_t_min, 0.5),
-            fbh_limit=st.slider("FBH-Auslegungsgrenze Vorlauf (°C)", 30.0, 50.0, th_defaults.fbh_limit, 1.0),
+            heizgrenze_aul=st.slider("Heizgrenze Außentemperatur (°C)", 5.0, 20.0, th_defaults.heizgrenze_aul, 0.5,
+                                     help="Außentemperatur, oberhalb derer laut Heizkurve kein Heizbetrieb mehr nötig "
+                                          "wäre (Kap. 6.4); bestimmt auch die Heizgrenze im Einsparpotenzial."),
+            aktiv_schwelle_vl=st.slider("Aktiver Heizbetrieb ab Vorlauf (°C)", 15.0, 40.0, th_defaults.aktiv_schwelle_vl, 1.0,
+                                        help="Ab dieser Vorlauftemperatur gilt der Heizbetrieb als aktiv, z.B. für "
+                                             "die Delta-T-Auswertung und den Theorie-Praxis-Vergleich."),
+            delta_t_min=st.slider("Mindest-Spreizung Delta T (K)", 1.0, 10.0, th_defaults.delta_t_min, 0.5,
+                                  help="Mindest-Temperaturspreizung zwischen Vor- und Rücklauf bei aktivem Betrieb; "
+                                       "darunter deutet das auf ungeregelt weiterlaufende Pumpen hin."),
+            fbh_limit=st.slider("FBH-Auslegungsgrenze Vorlauf (°C)", 30.0, 50.0, th_defaults.fbh_limit, 1.0,
+                                help="Zulässige Vorlauftemperatur für Fußbodenheizungen (Niedertemperatursystem); "
+                                     "erscheint als Grenzlinie in den FBH-Diagrammen. Mit Anlagendokumentation abzugleichen."),
             heizkoerper_limit=st.slider("Heizkörper-Auslegungsgrenze Vorlauf (°C)", 40.0, 95.0,
                                         th_defaults.heizkoerper_limit, 1.0,
                                         help="Zulässige Vorlauftemperatur für Heizkörper/statische Heizflächen "
                                              "(nicht Fußbodenheizung); erscheint als Grenzlinie in den "
                                              "Vorlauf-Diagrammen. Mit Anlagendokumentation abzugleichen."),
-            heat_avoid_share=st.slider("Vermeidbarer Wärmeanteil oberhalb Heizgrenze", 0.0, 1.0, th_defaults.heat_avoid_share, 0.05),
-            rlt_night_hours=st.slider("RLT-Nachtabsenkung (Stunden/Nacht)", 0.0, 12.0, th_defaults.rlt_night_hours, 1.0),
-            rlt_night_reduction=st.slider("Ventilatorstrom-Reduktion in der Nacht", 0.0, 1.0, th_defaults.rlt_night_reduction, 0.05),
-            heat_price=st.number_input("Wärmepreis (€/kWh)", 0.0, 1.0, th_defaults.heat_price, 0.01),
-            power_price=st.number_input("Strompreis (€/kWh)", 0.0, 2.0, th_defaults.power_price, 0.01),
+            heat_avoid_share=st.slider("Vermeidbarer Wärmeanteil oberhalb Heizgrenze", 0.0, 1.0, th_defaults.heat_avoid_share, 0.05,
+                                       help="Anteil des Wärmeverbrauchs oberhalb der Heizgrenze, der durch "
+                                            "konsequentes Abschalten als vermeidbar angenommen wird (Maßnahme 1 im "
+                                            "Einsparpotenzial)."),
+            rlt_night_hours=st.slider("RLT-Nachtabsenkung (Stunden/Nacht)", 0.0, 12.0, th_defaults.rlt_night_hours, 1.0,
+                                      help="Angenommene Stundenzahl pro Nacht, in der die RLT-Ventilatoren gedrosselt "
+                                           "werden könnten (Maßnahme 2 im Einsparpotenzial)."),
+            rlt_night_reduction=st.slider("Ventilatorstrom-Reduktion in der Nacht", 0.0, 1.0, th_defaults.rlt_night_reduction, 0.05,
+                                          help="Angenommene Reduktion des Ventilatorstroms während der RLT-Nachtabsenkung."),
+            heat_price=st.number_input("Wärmepreis (€/kWh)", 0.0, 1.0, th_defaults.heat_price, 0.01,
+                                       help="Für die Kostenabschätzung im Einsparpotenzial."),
+            power_price=st.number_input("Strompreis (€/kWh)", 0.0, 2.0, th_defaults.power_price, 0.01,
+                                        help="Für die Kostenabschätzung im Einsparpotenzial."),
         )
 
 
@@ -273,7 +289,7 @@ ctx = Ctx(report=report, manual_minmax=_manual_minmax(input_bytes), assessment=r
 crit = evaluate_criteria(ctx)
 hints = optimization_hints(crit, ctx, thresholds.fbh_limit)
 
-tab_names = ["🔍 Datenprüfung", "📈 Abbildungen", "🧠 Auswertung"]
+tab_names = ["📖 Anleitung", "🔍 Datenprüfung", "📈 Abbildungen", "🧠 Auswertung"]
 if settings.show_buildings:
     tab_names.append("🏢 Gebäude")
 if settings.show_assessment:
@@ -288,7 +304,6 @@ if settings.show_explorer:
     tab_names.append("🔎 Explorer")
 tab_names.append("⬇️ Export")
 tab_names.append("🗺️ Funktionsweise")
-tab_names.append("📖 Anleitung")
 tabs = dict(zip(tab_names, st.tabs(tab_names)))
 
 with tabs["🔍 Datenprüfung"]:
@@ -301,7 +316,7 @@ with tabs["🔍 Datenprüfung"]:
     elif filter_choice == "Nur Plausible":
         qdf = qdf[qdf["Plausibilität"] == "Plausibel"]
     st.dataframe(
-        qdf.style.map(lambda v: f"background-color: {'#C6EFCE' if v == 'Plausibel' else '#FFC7CE'}",
+        qdf.style.map(lambda v: f"background-color: {GREEN if v == 'Plausibel' else RED}",
                       subset=["Plausibilität"]),
         width="stretch", hide_index=True, height=560,
     )
@@ -488,7 +503,7 @@ if settings.show_comparison:
         only_diff = st.checkbox("Nur Abweichungen zeigen", value=True)
         view = cmp1[cmp1["Ergebnis"] != "übereinstimmend"] if only_diff else cmp1
         st.dataframe(
-            view.style.map(lambda v: f"background-color: {'#C6EFCE' if v == 'übereinstimmend' else '#FFE699'}",
+            view.style.map(lambda v: f"background-color: {GREEN if v == 'übereinstimmend' else AMBER}",
                            subset=["Ergebnis"]),
             width="stretch", hide_index=True,
         )

@@ -6,6 +6,7 @@ from __future__ import annotations
 import html
 
 from .buildings import GEBAEUDE
+from .figures import COLOR_SOLL
 
 BOX_W, BOX_H, GAP, PAD = 148, 64, 12, 16
 HEADER_H = 36
@@ -84,7 +85,7 @@ def svg_overview(selected_zone: str | None = None) -> str:
 
 VL_COLOR = "#C0392B"   # warm/rot - Vorlauf
 RL_COLOR = "#2E6DA4"   # kalt/blau - Ruecklauf
-SOLL_COLOR = "#B8860B"  # Sollwert-Sensor (gestrichelt, gelb-braun)
+SOLL_COLOR = COLOR_SOLL  # dieselbe Farbe wie "Soll-Vorlauf" in den Plotly-Diagrammen (figures.py)
 CARD_W, CARD_H = 258, 196
 RLT_EXTRA_H = 92
 CARD_GAP_X, CARD_GAP_Y = 22, 46

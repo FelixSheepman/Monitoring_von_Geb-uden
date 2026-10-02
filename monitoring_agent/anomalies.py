@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-AKTIV_SCHWELLE_VL = 25.0
-DELTA_T_MIN = 2.0
+from .settings import Thresholds
+
+_DEFAULTS = Thresholds()
 
 
 def zero_dropouts(df: pd.DataFrame, cols: list[str]) -> pd.Series:
@@ -20,8 +21,8 @@ def meter_resets(df: pd.DataFrame, col: str) -> pd.Series:
     return diffs.index[diffs < 0].to_series()
 
 
-def low_delta_t(df: pd.DataFrame, vl_col: str, rl_col: str, aktiv: float = AKTIV_SCHWELLE_VL,
-                delta_min: float = DELTA_T_MIN) -> pd.Series:
+def low_delta_t(df: pd.DataFrame, vl_col: str, rl_col: str, aktiv: float = _DEFAULTS.aktiv_schwelle_vl,
+                delta_min: float = _DEFAULTS.delta_t_min) -> pd.Series:
     """Zeitpunkte mit aktivem Heizbetrieb (VL > Schwelle) und Spreizung unter DELTA_T_MIN."""
     dt = df[vl_col] - df[rl_col]
     mask = (df[vl_col] > aktiv) & (dt < delta_min)

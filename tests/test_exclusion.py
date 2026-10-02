@@ -1,5 +1,6 @@
 """Tests fuer den Ausschluss fehlerhafter Einzelwerte (Auswahl, Wirkung auf Grafiken/Bewertung, Protokoll, Export)."""
 
+import io
 from pathlib import Path
 
 import numpy as np
@@ -98,6 +99,27 @@ def test_exclusion_is_part_of_excel_and_word_export(df, tmp_path, monkeypatch):
     plain = tmp_path / "p.docx"
     word_export.export_docx(build_report(df), str(plain))
     assert "Nicht berücksichtigte Messwerte" not in "\n".join(p.text for p in Document(str(plain)).paragraphs)
+
+
+@needs_data
+def test_exclusion_summary_table_columns_consistent_across_formats(df, tmp_path, monkeypatch):
+    """Word und HTML sollten dieselben Spalten der Ausschluss-Zusammenfassung zeigen - vorher fehlte in
+    Word „Anteil %“, und HTML zeigte zusätzlich die interne Spalte „rule_key“."""
+    from monitoring_agent.exclusion import SUMMARY_COLUMNS
+    from monitoring_agent.html_export import export_html
+    rep = build_report(df, excluded=frozenset({(SOLL, "nullwert")}))
+
+    monkeypatch.setattr(word_export, "_figure_png", lambda fig: None)
+    path = tmp_path / "w.docx"
+    word_export.export_docx(rep, str(path))
+    doc = Document(str(path))
+    table = next(t for t in doc.tables if [c.text for c in t.rows[0].cells] == SUMMARY_COLUMNS)
+    assert table is not None
+
+    buf = io.BytesIO()
+    export_html(rep, buf)
+    html_text = buf.getvalue().decode("utf-8")
+    assert "Anteil %" in html_text and "rule_key" not in html_text
 
 
 @needs_data

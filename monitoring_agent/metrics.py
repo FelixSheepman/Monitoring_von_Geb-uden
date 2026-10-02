@@ -18,17 +18,24 @@ def daily_consumption(df: pd.DataFrame, meter_col: str) -> pd.Series:
     return (daily["last"] - daily["first"]).rename(meter_col)
 
 
-def thermal_power(df: pd.DataFrame, meter_col: str) -> pd.Series:
-    """Momentane thermische Leistung (kW) aus dem kumulierten Waermemengenzaehler (kWh): Differenz zweier
-    aufeinanderfolgender gueltiger Zaehlerstaende geteilt durch die tatsaechlich verstrichene Zeit (nicht
-    einfach 15 Minuten angenommen - bei Luecken im Datensatz waere das falsch). Ruecklaeufige Zaehlerstaende
-    (Reset/Uebertragungsfehler, siehe quality.py) wuerden eine negative Leistung ergeben und werden auf 0
-    begrenzt."""
+def _power_and_dt(df: pd.DataFrame, meter_col: str) -> tuple[pd.Series, pd.Series]:
+    """Momentane thermische Leistung (kW) und die tatsaechlich verstrichene Zeit (h) je Zeitschritt,
+    beide schon auf gueltige Werte gefiltert - gemeinsame Grundlage fuer thermal_power() und
+    duration_curve(). Differenz zweier aufeinanderfolgender gueltiger Zaehlerstaende geteilt durch die
+    tatsaechlich verstrichene Zeit (nicht einfach 15 Minuten angenommen - bei Luecken im Datensatz waere
+    das falsch). Ruecklaeufige Zaehlerstaende (Reset/Uebertragungsfehler, siehe quality.py) wuerden eine
+    negative Leistung ergeben und werden auf 0 begrenzt."""
     s = df[meter_col].dropna()
     dt_hours = s.index.to_series().diff().dt.total_seconds() / 3600
     power = (s.diff() / dt_hours).clip(lower=0)
     valid = power.notna() & dt_hours.notna() & (dt_hours > 0)
-    return power[valid].rename("kW")
+    return power[valid], dt_hours[valid]
+
+
+def thermal_power(df: pd.DataFrame, meter_col: str) -> pd.Series:
+    """Momentane thermische Leistung (kW) aus dem kumulierten Waermemengenzaehler (kWh)."""
+    power, _ = _power_and_dt(df, meter_col)
+    return power.rename("kW")
 
 
 def duration_curve(df: pd.DataFrame, meter_col: str) -> pd.DataFrame:
@@ -36,11 +43,7 @@ def duration_curve(df: pd.DataFrame, meter_col: str) -> pd.DataFrame:
     denen diese Leistung erreicht oder ueberschritten wird. Jeder Messwert zaehlt mit der tatsaechlich
     verstrichenen Zeit bis zum naechsten gueltigen Wert (nicht pauschal 15 Minuten), damit Luecken im
     Datensatz die Kurve nicht verfaelschen."""
-    s = df[meter_col].dropna()
-    dt_hours = s.index.to_series().diff().dt.total_seconds() / 3600
-    power = (s.diff() / dt_hours).clip(lower=0)
-    valid = power.notna() & dt_hours.notna() & (dt_hours > 0)
-    power, dt_hours = power[valid], dt_hours[valid]
+    power, dt_hours = _power_and_dt(df, meter_col)
     order = power.sort_values(ascending=False).index
     power_sorted, dt_sorted = power.loc[order], dt_hours.loc[order]
     hours_cum = dt_sorted.cumsum()

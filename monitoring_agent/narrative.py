@@ -19,10 +19,6 @@ import pandas as pd
 from .metrics import daily_consumption, duration_curve, duration_curve_percentiles
 from .settings import Thresholds
 
-HEIZGRENZE_AUL = 15.0  # °C - ueblicher Schwellenwert, ab dem Heizbetrieb einstellbar waere
-AKTIV_SCHWELLE_VL = 25.0  # °C - Vorlauftemperatur, ab der von aktivem Heizbetrieb ausgegangen wird
-NIEDRIGTEMP_FBH_GRENZE = 40.0  # °C - typische Auslegungsgrenze fuer Fussbodenheizungen
-
 
 @dataclass
 class NarrativeBlock:

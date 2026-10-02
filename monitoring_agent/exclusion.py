@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from .config import COLUMNS, PLAUSIBLE_RANGE
+from .config import COLUMNS, PLAUSIBLE_RANGE, zero_dropout_mask
 
 # Reihenfolge = Prioritaet: ein Wert wird nur unter der ersten zutreffenden Regel protokolliert.
 RULES: dict[str, str] = {
@@ -69,8 +69,7 @@ def invalid_masks(df: pd.DataFrame) -> dict[tuple[str, str], pd.Series]:
 
     for c in COLUMNS:
         s = df[c.short]
-        if c.role in ("vl", "rl", "soll_vl"):
-            add(c.short, "nullwert", s == 0)
+        add(c.short, "nullwert", zero_dropout_mask(s, c.role))
         bounds = PLAUSIBLE_RANGE.get(c.role)
         if bounds is not None:
             lo, hi = bounds

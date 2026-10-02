@@ -19,11 +19,15 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
+from . import structure
 from .structure import REPORT_SECTIONS, STEPS
 
-GREEN, RED, AMBER, HEADER = "C6EFCE", "FFC7CE", "FFE699", "1F3864"
-SEVERITY_COLORS = {"hoch": RED, "mittel": AMBER, "gering": GREEN}
-STATUS_COLORS = {"erfüllt": GREEN, "nicht erfüllt": RED, "nicht bewertbar": AMBER, "Info": "DDEBF7"}
+# Dieselben Ampel-Farben wie in der App-UI und im HTML-Export (structure.py); python-docx-Shading
+# braucht Hex ohne "#", daher hier abgeleitet statt eigener Literale.
+GREEN, RED, AMBER, INFO_BLUE = (c.lstrip("#") for c in (structure.GREEN, structure.RED, structure.AMBER, structure.INFO_BLUE))
+HEADER = "1F3864"
+SEVERITY_COLORS = {k: v.lstrip("#") for k, v in structure.SEVERITY_COLORS.items()}
+STATUS_COLORS = {"erfüllt": GREEN, "nicht erfüllt": RED, "nicht bewertbar": AMBER, "Info": INFO_BLUE}
 
 
 def _shade(cell, hex_fill: str) -> None:
@@ -47,6 +51,10 @@ def _table(doc: Document, df: pd.DataFrame, col_widths_cm: list[float], status_c
            font_pt: int = 8, colors: dict[str, str] | None = None) -> None:
     """Tabelle mit Kopfzeile. `colors` ordnet Zellwerten der Statusspalte eine Fuellfarbe zu;
     ohne `colors` gelten gruen fuer Plausibel/uebereinstimmend und sonst rot."""
+    assert len(col_widths_cm) == len(df.columns), (
+        f"col_widths_cm hat {len(col_widths_cm)} Einträge, df aber {len(df.columns)} Spalten "
+        f"({list(df.columns)}) - vermutlich hat sich das Spaltenschema geändert."
+    )
     t = doc.add_table(rows=1, cols=len(df.columns))
     t.style = "Table Grid"
     for j, name in enumerate(df.columns):
@@ -73,9 +81,13 @@ def _table(doc: Document, df: pd.DataFrame, col_widths_cm: list[float], status_c
             row.cells[j].width = Cm(w)
 
 
-def _figure_png(fig) -> bytes | None:
+def _figure_png(fig, target_width: int = 1000) -> bytes | None:
+    """Rendert die Abbildung als PNG fuer den Word-Export. Nutzt die vom Diagramm selbst gesetzte Hoehe,
+    wenn vorhanden (Carpetplots und der mehrzeilige Tag/Nacht-Vergleich sind bewusst hoeher als der
+    Standardwert), statt jede Abbildung unabhaengig von ihrem Seitenverhaeltnis auf 1000x480 zu stauchen."""
     try:
-        return fig.to_image(format="png", width=1000, height=480, scale=2)
+        height = fig.layout.height or 480
+        return fig.to_image(format="png", width=target_width, height=int(height), scale=2)
     except Exception:
         return None
 
@@ -223,8 +235,8 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
             "bezieht sich auf die unveränderten Rohdaten. Die Einzelwerte stehen in der Excel-Arbeitsmappe."
         )
         table_caption("Nicht berücksichtigte Messwerte mit Begründung")
-        _table(doc, log.summary[["Spalte", "Regel", "Anzahl", "Erster", "Letzter", "Begründung"]],
-               [3.2, 2.8, 1.3, 2.2, 2.2, 5.0], font_pt=7)
+        from .exclusion import SUMMARY_COLUMNS
+        _table(doc, log.summary[SUMMARY_COLUMNS], [3.0, 2.6, 1.2, 1.6, 2.1, 2.1, 5.1], font_pt=7)
 
     # ---- 4 Energieeinsparpotenzial
     chapter(REPORT_SECTIONS[3])

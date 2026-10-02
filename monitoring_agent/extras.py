@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .config import COLUMNS
+from .config import COLUMNS, zero_dropout_mask
 from .metrics import daily_consumption
 from .narrative import NarrativeBlock
 from .settings import Thresholds
@@ -24,10 +24,7 @@ def availability_daily(df: pd.DataFrame) -> pd.DataFrame:
     bad = pd.DataFrame(index=df.index)
     for c in COLUMNS:
         s = df[c.short]
-        is_bad = s.isna()
-        if c.role in ("vl", "rl", "soll_vl"):
-            is_bad |= s == 0
-        bad[c.short] = is_bad
+        bad[c.short] = s.isna() | zero_dropout_mask(s, c.role)
     return bad.resample("D").sum()
 
 
