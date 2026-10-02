@@ -63,6 +63,20 @@ def test_load_measurements_drops_duplicate_dst_timestamp(tmp_path):
 
 
 @needs_data
+def test_regelguete_narrative_is_derived_from_the_data(report):
+    """Auswertungstext zu den Regelguete-Abbildungen: Zahlen und Zeitpunkte stammen aus den Daten, die
+    Formulierung folgt dem Befund (statische Heizung folgt dem Soll, FBH nicht)."""
+    blocks = {b.figure_keys[0]: b for b in report.narrative if b.figure_keys[0].startswith("regelguete")}
+    stat, fbh = blocks["regelguete_stat_heizung"], blocks["regelguete_fbh"]
+    assert "folgt die Ist-Vorlauftemperatur der Soll-Vorgabe weitgehend" in stat.text
+    assert "zu keinem Zeitpunkt überschritten" in stat.text and "70 °C" in stat.text
+    assert "dauerhafte Regelabweichung" in stat.text and "rund 20 °C" in stat.text
+    assert "an 3 Zeitpunkten (November 2024, März 2025, September 2025)" in stat.text
+    assert "nicht erkennbar" in fbh.text and fbh.heading.endswith("nicht")
+    assert "40 °C wird überschritten" in fbh.text and "Heizkurve" not in fbh.text
+
+
+@needs_data
 def test_min_max_match_manual_header_rows(df):
     wb = openpyxl.load_workbook(DATA, read_only=True, data_only=True)
     rows = list(wb["Tabelle1"].iter_rows(min_row=4, max_row=5, values_only=True))
