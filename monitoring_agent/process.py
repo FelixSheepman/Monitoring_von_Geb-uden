@@ -16,7 +16,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from .assessment import data_coverage
-from .comparison import REFERENCE_DIR, agreement_summary, compare_findings, compare_table1
+from .comparison import REFERENCE_DIR, _read_reference_csv, agreement_summary, compare_findings, compare_table1
 from .config import COLUMNS
 from .quality import quality_to_dataframe, run_data_quality
 from .structure import REPORT_SECTIONS, REQUIRED_SECTION_KEYWORDS, STEP_CHAPTERS, STEPS
@@ -42,7 +42,7 @@ class Ctx:
 # ----------------------------------------------------------------------------- Hilfen
 
 def _read_csv(name: str) -> pd.DataFrame:
-    return pd.read_csv(REFERENCE_DIR / name, sep=";", encoding="utf-8").fillna("")
+    return _read_reference_csv(REFERENCE_DIR / name, name).fillna("")
 
 
 def load_criteria() -> pd.DataFrame:
@@ -92,9 +92,13 @@ def _measure(ctx: Ctx) -> dict[str, tuple[float | None, str, str]]:
     if ctx.manual_minmax is None:
         out["DP2"] = (None, "Min-/Max-Zeilen in der Excel-Kopfzeile nicht vorhanden", "")
     else:
+        # reindex() statt .loc[] direkt: faellt eine Spalte aus COLUMNS aus der Referenz heraus (z.B. nach
+        # einer Anlagenaenderung), gibt es NaN-Zeilen statt eines harten KeyError - die bestehende
+        # pd.notna()-Pruefung unten behandelt das bereits korrekt als "nicht uebereinstimmend".
+        minmax = ctx.manual_minmax.reindex([c.short for c in COLUMNS])
         ok = total = 0
         for c in COLUMNS:
-            m = ctx.manual_minmax.loc[c.short]
+            m = minmax.loc[c.short]
             for key, val in (("Min", rep.raw_df[c.short].min()), ("Max", rep.raw_df[c.short].max())):
                 total += 1
                 ok += int(pd.notna(m[key]) and abs(val - m[key]) <= 0.01)

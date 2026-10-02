@@ -234,14 +234,18 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
         "Absoluter, täglich aufsummierter Wärmeverbrauch der gesamten Anlage.",
     ))
 
+    # Einmal berechnet, unten an savings_potential()/build_assessment() durchgereicht statt dort (und
+    # in den jeweils anderen Abbildungen) erneut aus den Rohdaten gebildet zu werden.
+    pump_monthly = pump_runtime_monthly(df)
+    avail_daily = availability_daily(df)
     figs.append(FigureEntry(
         "pumpenlaufzeit", "Laufzeit der Heizkreispumpen (Monatswerte)",
-        fx.fig_pump_runtime(pump_runtime_monthly(df), "Laufzeit der Heizkreispumpen (Monatswerte)"),
+        fx.fig_pump_runtime(pump_monthly, "Laufzeit der Heizkreispumpen (Monatswerte)"),
         "Monatliche Betriebsstunden der Heizkreispumpen; 720 h entsprechen Dauerbetrieb.",
     ))
     figs.append(FigureEntry(
         "verfuegbarkeit", "Datenverfügbarkeit je Sensor und Tag",
-        fx.fig_availability(availability_daily(df), "Datenverfügbarkeit je Sensor und Tag"),
+        fx.fig_availability(avail_daily, "Datenverfügbarkeit je Sensor und Tag"),
         "Anzahl fehlender oder auf 0 stehender Zeitschritte (von 96 je Tag) je Spalte und Kalendertag.",
     ))
 
@@ -260,10 +264,12 @@ def build_report(df: pd.DataFrame, carpet_year: int = 2025, carpet_month: int = 
 
     t0 = time.perf_counter()
     narrative = build_narrative(df, th)
-    savings = savings_potential(df, th)
+    savings = savings_potential(df, th, heat_daily=daily_waerme, strom_ab_daily=daily_strom_ab,
+                                strom_zu_daily=daily_strom_zu)
     t1 = time.perf_counter()
     head_table, coverage = measurement_head(df), data_coverage(df)
-    assessment = build_assessment(df, quality_df, savings, th)
+    assessment = build_assessment(df, quality_df, savings, th, heat_daily=daily_waerme,
+                                  strom_ab_daily=daily_strom_ab, pump_monthly=pump_monthly, avail_daily=avail_daily)
     timings["Bewertung"] = time.perf_counter() - t1
     timings["Auswertungstext"] = time.perf_counter() - t0
 

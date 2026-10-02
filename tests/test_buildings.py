@@ -101,7 +101,10 @@ def test_svg_overview_contains_all_circuits_and_highlights_the_selection():
 
 def test_netzplan_is_well_formed_and_labels_every_sensor_column():
     plain = svg_netzplan()
-    assert plain.startswith("<svg") and plain.count("<svg") == 1 and plain.endswith("</svg>")
+    # svg_netzplan() wrappt das SVG in einen scrollbaren Container (overflow-x:auto ab Mindestbreite),
+    # damit die Karten auf schmalen Fenstern nicht unkontrolliert schrumpfen statt zu scrollen.
+    assert plain.startswith('<div style="overflow-x:auto">') and plain.endswith("</div></div>")
+    assert plain.count("<svg") == 1 and "<svg" in plain and plain.count("</svg>") == 1
     # jede Spalte eines Heizkreises (VL/RL, Soll, Pumpe) taucht als Beschriftung im Netzplan auf
     for k in HEIZKREISE.values():
         for c in (*k.columns, *k.extra_columns):

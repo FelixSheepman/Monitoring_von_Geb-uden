@@ -28,18 +28,23 @@ def availability_daily(df: pd.DataFrame) -> pd.DataFrame:
     return bad.resample("D").sum()
 
 
-def savings_potential(df: pd.DataFrame, th: Thresholds) -> pd.DataFrame:
-    """Grobe Abschaetzung des Einsparpotenzials mit ausdruecklich genannten Annahmen."""
+def savings_potential(df: pd.DataFrame, th: Thresholds, heat_daily: pd.Series | None = None,
+                       strom_ab_daily: pd.Series | None = None, strom_zu_daily: pd.Series | None = None) -> pd.DataFrame:
+    """Grobe Abschaetzung des Einsparpotenzials mit ausdruecklich genannten Annahmen. Die drei optionalen
+    Tagesreihen lassen build_report() bereits berechnete Werte durchreichen statt sie hier erneut aus den
+    Rohdaten zu bilden; ohne Angabe werden sie wie zuvor direkt aus `df` berechnet."""
     days = max((df.index.max() - df.index.min()).days + 1, 1)
     to_year = 365 / days
 
-    heat_daily = daily_consumption(df, "Zähler 019 – WMZ")
+    heat_daily = heat_daily if heat_daily is not None else daily_consumption(df, "Zähler 019 – WMZ")
     aul_daily = df["RLT KL01 Außenluft"].resample("D").mean()
     warm_days = aul_daily[aul_daily > th.heizgrenze_aul].index
     heat_warm = heat_daily.reindex(warm_days).sum()
     heat_total = heat_daily.sum()
 
-    fans = sum(daily_consumption(df, c).sum() for c in ("Zähler 021 – Strom Abluft", "Zähler 022 – Strom Zuluft"))
+    strom_ab_daily = strom_ab_daily if strom_ab_daily is not None else daily_consumption(df, "Zähler 021 – Strom Abluft")
+    strom_zu_daily = strom_zu_daily if strom_zu_daily is not None else daily_consumption(df, "Zähler 022 – Strom Zuluft")
+    fans = strom_ab_daily.sum() + strom_zu_daily.sum()
 
     heat_save = heat_warm * th.heat_avoid_share * to_year
     fan_save = fans * (th.rlt_night_hours / 24) * th.rlt_night_reduction * to_year

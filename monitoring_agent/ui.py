@@ -71,7 +71,14 @@ def render_heizkreise(report, carpet_granularity: str, carpet_anchor, th=None) -
     for col, geb in zip(cols, GEBAEUDE):
         with col:
             with st.container(border=True):
-                st.markdown(f"##### <span style='color:{geb.farbe}'>■</span> {geb.name}", unsafe_allow_html=True)
+                # Eigene weisse Box statt reiner Textfarbe (wie bei der Carpetplot-Legende, siehe
+                # figures.py): bleibt unabhaengig vom Streamlit-Theme (hell/dunkel) gut lesbar, eine
+                # reine Farb-Textfarbe haette auf dunklem Grund zu wenig Kontrast haben koennen.
+                st.markdown(
+                    f"##### <span style='display:inline-block;background:#ffffff;border:1.5px solid {geb.farbe};"
+                    f"border-radius:4px;padding:1px 9px;color:#1c2733'>{geb.name}</span>",
+                    unsafe_allow_html=True,
+                )
                 st.caption(f"{len(geb.kreise)} Heizkreis" + ("" if len(geb.kreise) == 1 else "e"))
                 for k in geb.kreise:
                     active = st.session_state.get("selected_kreis") == k.zone

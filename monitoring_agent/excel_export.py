@@ -23,6 +23,7 @@ import pandas as pd
 import xlsxwriter
 
 from .metrics import daily_consumption
+from .narrative import place_by_figure
 
 HEADER_FMT = dict(bold=True, bg_color="#1F3864", font_color="white", border=1)
 PLAUSIBEL_FMT = dict(bg_color="#C6EFCE", font_color="#006100")
@@ -183,17 +184,41 @@ def _write_carpet_sheet(wb: xlsxwriter.Workbook, sheet_name: str, title: str,
     ws.set_column(1, last_col, 6)
 
 
-def _write_narrative_sheet(wb: xlsxwriter.Workbook, narrative) -> None:
+def _write_narrative_sheet(wb: xlsxwriter.Workbook, report) -> None:
+    """Wie word_export.py/html_export.py: jeder Textblock steht unter der letzten Abbildung, auf die er
+    sich bezieht (place_by_figure), statt in der urspruenglichen, unsortierten Reihenfolge - so zeigen
+    alle drei Exportformate dieselbe Zuordnung von Auswertungstext zu Abbildung."""
     ws = wb.add_worksheet("Auswertung")
     heading_fmt = wb.add_format({"bold": True, "font_size": 12, "font_color": "#1F3864"})
+    ref_fmt = wb.add_format({"italic": True, "font_color": "#5b6b7b"})
     text_fmt = wb.add_format({"text_wrap": True, "valign": "top"})
+
+    keys_in_order = [e.key for e in report.figures]
+    fig_no = {e.key: i for i, e in enumerate(report.figures, start=2)}
+    placed, unassigned = place_by_figure(report.narrative, keys_in_order)
+
     row = 0
-    for block in narrative:
+
+    def write_block(block) -> None:
+        nonlocal row
         ws.write(row, 0, block.heading, heading_fmt)
         row += 1
+        # Anders als in Word/HTML (dort nur bei mehreren Bezuegen, da der Text schon direkt unter der
+        # Abbildung steht): hier bei jedem Bezug, weil Text und Abbildung in Excel auf getrennten
+        # Blaettern liegen und der Bezug sonst nicht ablesbar waere.
+        refs = [f"Abbildung {fig_no[k]}" for k in block.figure_keys if k in fig_no]
+        if refs:
+            ws.write(row, 0, "Bezug: " + ", ".join(refs), ref_fmt)
+            row += 1
         ws.merge_range(row, 0, row, 4, block.text, text_fmt)
         ws.set_row(row, 60)
         row += 2
+
+    for entry in report.figures:
+        for block in placed.get(entry.key, []):
+            write_block(block)
+    for block in unassigned:
+        write_block(block)
     ws.set_column(0, 4, 26)
 
 
@@ -272,7 +297,7 @@ def export_workbook(report, path: str, comparison: pd.DataFrame | None = None,
     with xlsxwriter.Workbook(path) as wb:
         _write_quality_sheet(wb, report.quality_df)
         if report.narrative:
-            _write_narrative_sheet(wb, report.narrative)
+            _write_narrative_sheet(wb, report)
         if len(report.exclusion_log.summary):
             _write_exclusion_sheet(wb, report.exclusion_log)
 

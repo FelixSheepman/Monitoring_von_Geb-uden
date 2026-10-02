@@ -14,8 +14,21 @@ import pandas as pd
 REFERENCE_DIR = Path(__file__).resolve().parent.parent / "reference"
 
 
+def _read_reference_csv(path: Path, purpose: str) -> pd.DataFrame:
+    """Liest eine Referenz-CSV aus reference/ mit einer verstaendlichen Fehlermeldung statt eines
+    rohen FileNotFoundError, falls die Datei fehlt oder beschaedigt ist (z.B. nach einem unvollstaendigen
+    Checkout)."""
+    try:
+        return pd.read_csv(path, sep=";", encoding="utf-8")
+    except (FileNotFoundError, pd.errors.ParserError) as e:
+        raise FileNotFoundError(
+            f"Referenzdatei für {purpose} fehlt oder ist beschädigt: {path}. Sie gehört zum reference/-Ordner "
+            "des Projekts und sollte mitgeliefert sein - ohne sie lässt sich der manuelle Vergleich nicht berechnen."
+        ) from e
+
+
 def compare_table1(quality_df: pd.DataFrame, manual_path: Path | None = None) -> pd.DataFrame:
-    manual = pd.read_csv(manual_path or REFERENCE_DIR / "manual_tabelle1.csv", sep=";", encoding="utf-8").fillna("")
+    manual = _read_reference_csv(manual_path or REFERENCE_DIR / "manual_tabelle1.csv", "Tabelle 1 (Datenprüfung)").fillna("")
     agent = quality_df[["Spalte", "Bezeichnung", "Plausibilität", "Bewertung"]].rename(
         columns={"Plausibilität": "Agent", "Bewertung": "Agent_Befund"})
     agent["Agent"] = agent["Agent"].str.replace("!", "", regex=False)
@@ -34,7 +47,7 @@ def _classify(row) -> str:
 
 
 def compare_findings(narrative_headings: list[str], manual_path: Path | None = None) -> pd.DataFrame:
-    manual = pd.read_csv(manual_path or REFERENCE_DIR / "manual_findings.csv", sep=";", encoding="utf-8")
+    manual = _read_reference_csv(manual_path or REFERENCE_DIR / "manual_findings.csv", "die gefundenen Befunde")
     manual["Vom Agent gefunden"] = manual["Agent_Block"].isin(narrative_headings).map({True: "ja", False: "nein"})
     return manual
 

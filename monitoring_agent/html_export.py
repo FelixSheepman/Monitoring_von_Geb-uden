@@ -11,6 +11,7 @@ from datetime import date
 
 import pandas as pd
 
+from .narrative import place_by_figure
 from .structure import GREEN, RED, REPORT_SECTIONS, SEVERITY_COLORS
 
 SEVERITY = SEVERITY_COLORS
@@ -40,7 +41,15 @@ figcaption{font-size:.9rem;color:var(--muted);margin-top:.2em}
 .note{color:var(--muted);font-size:.85rem}
 nav{display:flex;flex-wrap:wrap;gap:4px 18px;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:8px 16px;margin:1em 0}
 nav a{color:var(--navy)}
-@media print{nav{display:none}h2{break-after:avoid}figure{break-inside:avoid}}
+@media print{
+  nav{display:none}
+  h2{break-after:avoid}
+  figure{break-inside:avoid}
+  /* Hohe Carpetplots (bis 980px, z.B. Wochenansicht mit Zellbeschriftung) wuerden eine A4-Seite sonst
+     sprengen; die Diagramme sind mit config "responsive: true" eingebettet, Plotly passt die Darstellung
+     also automatisch an die hier vorgegebene kleinere Druckhoehe an. */
+  .js-plotly-plot{max-height:180mm!important}
+}
 """
 
 
@@ -89,14 +98,7 @@ def export_html(report, path, narrative=None, comparison=None, include_savings: 
     df = report.df
     th = getattr(report, "thresholds", None) or Thresholds()
     keys = [e.key for e in report.figures]
-    placed: dict[str, list] = {}
-    unassigned = []
-    for b in narrative:
-        valid = [k for k in b.figure_keys if k in keys]
-        if valid:
-            placed.setdefault(max(valid, key=keys.index), []).append(b)
-        else:
-            unassigned.append(b)
+    placed, unassigned = place_by_figure(narrative, keys)
 
     n_bad = int((report.quality_df["Plausibilität"] == "Auffällig!").sum())
     out: list[str] = []

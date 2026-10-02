@@ -20,6 +20,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 from . import structure
+from .narrative import place_by_figure
 from .structure import REPORT_SECTIONS, STEPS
 
 # Dieselben Ampel-Farben wie in der App-UI und im HTML-Export (structure.py); python-docx-Shading
@@ -126,16 +127,7 @@ def export_docx(report, path_or_buffer, narrative=None, comparison=None, include
     df = report.df
     th = getattr(report, "thresholds", None) or Thresholds()
     keys_in_order = [e.key for e in report.figures]
-
-    # Jeder Text steht unter der LETZTEN Abbildung, auf die er sich bezieht (dann sind alle Bezuege schon gezeigt).
-    placed: dict[str, list] = {}
-    unassigned = []
-    for b in narrative:
-        valid = [k for k in b.figure_keys if k in keys_in_order]
-        if valid:
-            placed.setdefault(max(valid, key=keys_in_order.index), []).append(b)
-        else:
-            unassigned.append(b)
+    placed, unassigned = place_by_figure(narrative, keys_in_order)
 
     doc = _new_document(title, subtitle)
     n = 0

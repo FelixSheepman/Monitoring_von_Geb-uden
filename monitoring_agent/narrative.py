@@ -27,6 +27,23 @@ class NarrativeBlock:
     text: str
 
 
+def place_by_figure(narrative: list[NarrativeBlock], figure_keys_in_order: list[str]
+                     ) -> tuple[dict[str, list[NarrativeBlock]], list[NarrativeBlock]]:
+    """Ordnet jeden Textblock der LETZTEN Abbildung zu, auf die er sich bezieht (dann sind beim Lesen
+    bereits alle Bezuege gezeigt worden); Bloecke ohne Bezug zu einer vorhandenen Abbildung landen in
+    der zweiten Rueckgabe. Gemeinsam fuer Word-, HTML- und Excel-Export, damit alle drei Formate
+    dieselbe Zuordnung von Auswertungstext zu Abbildung zeigen."""
+    placed: dict[str, list[NarrativeBlock]] = {}
+    unassigned: list[NarrativeBlock] = []
+    for b in narrative:
+        valid = [k for k in b.figure_keys if k in figure_keys_in_order]
+        if valid:
+            placed.setdefault(max(valid, key=figure_keys_in_order.index), []).append(b)
+        else:
+            unassigned.append(b)
+    return placed, unassigned
+
+
 def _heizkurve_text(df: pd.DataFrame, aul_col: str, vl_col: str, th: Thresholds) -> NarrativeBlock:
     sub = df[[aul_col, vl_col]].dropna()
     slope, intercept = np.polyfit(sub[aul_col], sub[vl_col], 1)

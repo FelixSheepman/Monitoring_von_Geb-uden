@@ -138,6 +138,20 @@ def test_excel_export_includes_savings_assessment_theory_and_comparison_sheets(d
 
 
 @needs_data
+def test_excel_export_narrative_sheet_shows_figure_references(df, tmp_path):
+    """Die Excel-Auswertung sollte wie Word/HTML jedem Textblock seine Abbildung zuordnen, statt die
+    Bloecke unsortiert ohne Bezug aufzulisten."""
+    import openpyxl
+    from monitoring_agent.excel_export import export_workbook
+    rep = build_report(df)
+    xlsx = tmp_path / "narrative.xlsx"
+    export_workbook(rep, str(xlsx))
+    ws = openpyxl.load_workbook(xlsx, read_only=True)["Auswertung"]
+    cells = [c.value for row in ws.iter_rows() for c in row if c.value]
+    assert any(str(v).startswith("Bezug: Abbildung") for v in cells)
+
+
+@needs_data
 def test_excel_export_savings_and_assessment_sheets_are_optional(df, tmp_path):
     import openpyxl
     from monitoring_agent.excel_export import export_workbook

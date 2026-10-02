@@ -35,7 +35,11 @@ def svg_overview(selected_zone: str | None = None) -> str:
     widths = [len(g.kreise) * BOX_W + (len(g.kreise) - 1) * GAP + 2 * PAD for g in GEBAEUDE]
     # Kopfzeile (Gebäudename) kann breiter sein als die Kreis-Boxen darunter -> pro Gebäude umbrechen und die
     # größte benötigte Zeilenzahl fürs ganze Diagramm übernehmen, damit alle Boxen auf gleicher Höhe beginnen.
-    name_lines = [_wrap(g.name, max(10, round(w / 7.4))) for g, w in zip(GEBAEUDE, widths)]
+    # Px-pro-Zeichen bewusst grosszuegig angesetzt (8.5 statt der schmaleren Durchschnittsbreite eines
+    # Zeichens bei 13.5px/fett) - lieber eine Zeile zu frueh umbrechen als Text ueber die Box hinaus
+    # abschneiden, da ohne echte Zeichenbreiten-Messung (kein Rendering-Engine verfuegbar) nur eine
+    # Schaetzung moeglich ist.
+    name_lines = [_wrap(g.name, max(10, round(w / 8.5))) for g, w in zip(GEBAEUDE, widths)]
     header_h = HEADER_H + max(len(lines) for lines in name_lines) * 15
 
     building_gap = 28
@@ -309,4 +313,6 @@ def svg_netzplan(selected_zone: str | None = None) -> str:
     svg.append(f'<rect x="0" y="0" width="{total_w:.0f}" height="{total_h:.0f}" fill="{BG}" rx="12"/>')
     svg += body
     svg.append("</svg>")
-    return "".join(svg)
+    # Ab einer Mindestbreite lieber horizontal scrollen als die Karten (und ihre ohnehin schon kleine,
+    # 7-11px grosse Beschriftung) auf schmalen Fenstern unkontrolliert weiter zu schrumpfen.
+    return f'<div style="overflow-x:auto"><div style="min-width:640px">{"".join(svg)}</div></div>'

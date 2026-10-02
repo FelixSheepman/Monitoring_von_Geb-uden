@@ -294,12 +294,12 @@ if settings.show_buildings:
     tab_names.append("🏢 Gebäude")
 if settings.show_assessment:
     tab_names.append("🏁 Bewertung")
-if settings.show_comparison:
-    tab_names.append("⚖️ Vergleich")
-if settings.show_process:
-    tab_names.append("🧭 Vorgehen")
-if settings.show_research:
-    tab_names.append("🎓 Forschung")
+# Vorgehen/Forschung/Vergleich sind reine Methodik-Tabs (fuer die Hausarbeit, nicht fuer die
+# Messergebnisse); zusammengefasst in einem Tab mit Unter-Navigation, statt die Ergebnis-Tabs mit bis
+# zu drei weiteren Tabs zu vermischen und die Tableiste unnoetig zu verlaengern.
+show_methodik = settings.show_comparison or settings.show_process or settings.show_research
+if show_methodik:
+    tab_names.append("📚 Methodik")
 if settings.show_explorer:
     tab_names.append("🔎 Explorer")
 tab_names.append("⬇️ Export")
@@ -463,16 +463,27 @@ if settings.show_assessment:
     with tabs["🏁 Bewertung"]:
         render_assessment(report, settings.show_savings)
 
+if show_methodik:
+    with tabs["📚 Methodik"]:
+        sub_names = []
+        if settings.show_process:
+            sub_names.append("🧭 Vorgehen")
+        if settings.show_research:
+            sub_names.append("🎓 Forschung")
+        if settings.show_comparison:
+            sub_names.append("⚖️ Vergleich")
+        sub_tabs = dict(zip(sub_names, st.tabs(sub_names)))
+
 if settings.show_process:
-    with tabs["🧭 Vorgehen"]:
+    with sub_tabs["🧭 Vorgehen"]:
         render_process(report, crit, llm_result)
 
 if settings.show_research:
-    with tabs["🎓 Forschung"]:
+    with sub_tabs["🎓 Forschung"]:
         render_research(ctx, crit, report, thresholds, settings.show_savings)
 
 if settings.show_comparison:
-    with tabs["⚖️ Vergleich"]:
+    with sub_tabs["⚖️ Vergleich"]:
         st.subheader("Vergleich manuelle Auswertung ↔ Agent (Kap. 8)")
         st.caption("Referenzwerte der manuellen Auswertung stehen in reference/*.csv und können dort korrigiert werden.")
         cmp1 = compare_table1(report.quality_df)

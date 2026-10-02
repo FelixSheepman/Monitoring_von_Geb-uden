@@ -116,7 +116,11 @@ def _severity(freq: float | None, energy: float | None, floor: int = 0) -> tuple
 
 
 def build_assessment(df: pd.DataFrame, quality_df: pd.DataFrame, savings: pd.DataFrame | None,
-                     th: Thresholds) -> pd.DataFrame:
+                     th: Thresholds, heat_daily: pd.Series | None = None, strom_ab_daily: pd.Series | None = None,
+                     pump_monthly: pd.DataFrame | None = None, avail_daily: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Die vier optionalen Series/DataFrame-Parameter lassen build_report() bereits berechnete Werte
+    durchreichen, statt sie hier (und in den Report-Abbildungen) ein zweites Mal aus den Rohdaten zu
+    bilden - ohne Angabe werden sie wie zuvor direkt aus `df` berechnet."""
     rows = []
 
     def add(key, bereich, befund, kennzahl, freq, energy, floor=0, hinweis=""):
@@ -137,7 +141,7 @@ def build_assessment(df: pd.DataFrame, quality_df: pd.DataFrame, savings: pd.Dat
         f"{frac:.0f} % der Zeitschritte über {th.heizgrenze_aul:.0f} °C Außentemperatur mit Vorlauf > {th.aktiv_schwelle_vl:.0f} °C",
         frac, heat_share)
 
-    ab = daily_consumption(df, "Zähler 021 – Strom Abluft")
+    ab = strom_ab_daily if strom_ab_daily is not None else daily_consumption(df, "Zähler 021 – Strom Abluft")
     we = ab[ab.index.dayofweek >= 5].mean(); wt = ab[ab.index.dayofweek < 5].mean()
     add("rlt_dauerbetrieb", "Lüftung (RLT)", "RLT-Anlage im Dauerbetrieb ohne erkennbare Nachtabsenkung",
         f"Wochenende {we:.1f} kWh/Tag gegenüber {wt:.1f} kWh/Tag Werktag ({(we / wt - 1) * 100:+.1f} %)",
@@ -162,18 +166,18 @@ def build_assessment(df: pd.DataFrame, quality_df: pd.DataFrame, savings: pd.Dat
         "; ".join(f"{k}: {v:.0f} % der aktiven Zeit unter {th.delta_t_min:g} K" for k, v in lows.items()),
         max(lows.values()), None)
 
-    heat = daily_consumption(df, "Zähler 019 – WMZ")
+    heat = heat_daily if heat_daily is not None else daily_consumption(df, "Zähler 019 – WMZ")
     summer_share = float(heat[heat.index.month.isin([6, 7, 8])].sum() / heat.sum() * 100)
     add("sommer_restwaerme", "Wärmeverbrauch", "Restwärmeverbrauch außerhalb der Heizperiode",
         f"Sommermonate (Jun–Aug) = {summer_share:.1f} % des gemessenen Wärmeverbrauchs", None, summer_share)
 
-    monthly = pump_runtime_monthly(df)
+    monthly = pump_monthly if pump_monthly is not None else pump_runtime_monthly(df)
     share = monthly.div(monthly.index.days_in_month * 24, axis=0)
     summer_pump = float(share[share.index.month.isin([6, 7, 8])].mean().mean() * 100)
     add("pumpen_sommer", "Pumpen", "Heizkreispumpen mit Sommerabschaltung, aber Restlaufzeiten",
         f"Pumpenlaufzeit im Sommer im Mittel {summer_pump:.0f} % der Zeit", summer_pump, None)
 
-    bad = availability_daily(df)
+    bad = avail_daily if avail_daily is not None else availability_daily(df)
     bad_share = float(bad.values.sum() / (len(df) * df.shape[1]) * 100)
     common = int(((bad > 0).sum(axis=1) >= 10).sum())
     add("datenqualitaet", "Datenqualität", "Nullwert-Aussetzer und gemeinsamer Datenausfall",
